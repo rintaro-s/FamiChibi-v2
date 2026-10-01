@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FamiChibi — 家族がいつでもそこにいる。</title>
+<meta name="description" content="家族の“ちびっこ”が暮らすリビングを、スマホの中に。Team Daijobu（鳥羽商船高等専門学校）／パソコン甲子園2026 モバイル部門">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --peach: #e8745a; --peach-2: #ff9a80; --peach-soft: #ffe3d8; --cream: #fff8f2; --ink: #3a2e2b; --muted: #8a7a73;
+  --pink: #ff9db0; --pink-soft: #ffe4ec; --mint: #2ec4b6; --mint-soft: #d9f6f2; --sky: #5ec8ff; --sky-soft: #e2f4ff;
+  --lav: #b57bff; --lav-soft: #efe4ff; --sun: #ffd166; --line: #f1dfd5; --card: #ffffff; --urgent: #ff5a5f;
+  --shadow: 0 10px 30px rgba(160, 90, 60, .12); --shadow-lg: 0 24px 60px rgba(160, 90, 60, .18);
+  --r: 28px;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; overflow-x: hidden; }
+body {
+  margin: 0; color: var(--ink); background: var(--cream); overflow-x: hidden;
+  font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
+  line-height: 1.8; -webkit-font-smoothing: antialiased; overflow-x: clip;
+}
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+.wrap { width: min(1160px, 100% - 40px); margin: 0 auto; }
+section { position: relative; padding: 110px 0; overflow-x: clip; }
+h2, h3, .catch, .lead, .point, .qa summary { word-break: auto-phrase; line-break: strict; }
+h2 { font-size: clamp(28px, 4.2vw, 46px); line-height: 1.35; margin: 0 0 18px; font-weight: 800; letter-spacing: .02em; }
+h3 { font-size: clamp(20px, 2.4vw, 26px); margin: 0 0 10px; font-weight: 800; }
+p { margin: 0 0 1em; }
+.lead { font-size: clamp(16px, 1.7vw, 19px); color: #5d4c46; }
+.kicker { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; color: var(--peach); letter-spacing: .12em; font-size: 14px; margin-bottom: 10px; }
+.kicker::before { content: ""; width: 26px; height: 3px; border-radius: 3px; background: currentColor; }
+.hl { background: linear-gradient(transparent 62%, rgba(255, 209, 102, .7) 62%); padding: 0 .1em; }
+.center { text-align: center; }
+
+/* ------------------------------------------------------------------ nav */
+nav {
+  position: fixed; top: 14px; left: 50%; transform: translateX(-50%); z-index: 50; width: max-content; max-width: calc(100% - 20px); pointer-events: none;
+}
+nav .bar {
+  pointer-events: auto; display: flex; align-items: center; gap: 6px; padding: 8px 10px 8px 18px; border-radius: 999px;
+  max-width: 100%; overflow-x: auto; scrollbar-width: none; white-space: nowrap;
+  background: rgba(255, 255, 255, .78); backdrop-filter: blur(14px); box-shadow: var(--shadow); border: 1px solid rgba(255,255,255,.9);
+  transition: transform .4s cubic-bezier(.3,1.4,.5,1);
+}
+nav .logo { font-weight: 800; color: var(--peach); margin-right: 8px; display: flex; align-items: center; gap: 6px; text-decoration: none; }
+nav .logo span { font-size: 22px; animation: bob 2.4s ease-in-out infinite; display: inline-block; }
+nav a.link { text-decoration: none; font-size: 14px; font-weight: 700; padding: 6px 12px; border-radius: 999px; color: #6b5750; transition: background .2s, color .2s; }
+nav a.link:hover { background: var(--peach-soft); color: var(--peach); }
+nav .bar::-webkit-scrollbar { display: none; }
+nav a.link, nav .logo { flex: none; }
+
+/* ------------------------------------------------------------------ hero */
+.hero { position: relative; min-height: 100vh; padding: 130px 0 90px; overflow: hidden;
+  background: radial-gradient(900px 500px at 85% 20%, #ffe0ec 0, transparent 60%), radial-gradient(700px 500px at 10% 80%, #e0f3ff 0, transparent 60%), var(--cream); }
+.blob { position: absolute; border-radius: 50%; filter: blur(40px); opacity: .55; animation: drift 18s ease-in-out infinite alternate; pointer-events: none; }
+.blob.b1 { width: 380px; height: 380px; background: #ffc9b5; top: 8%; left: -80px; }
+.blob.b2 { width: 460px; height: 460px; background: #d8ecff; bottom: -120px; right: 20%; animation-delay: -6s; }
+.blob.b3 { width: 260px; height: 260px; background: #f3dcff; top: 30%; right: -60px; animation-delay: -11s; }
+@keyframes drift { to { transform: translate(60px, -40px) scale(1.15); } }
+.hero-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center; position: relative; z-index: 2; }
+@media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; } }
+.badge { display: inline-flex; gap: 8px; align-items: center; padding: 7px 14px; border-radius: 999px; background: #fff; box-shadow: var(--shadow);
+  font-size: 13px; font-weight: 700; color: #7a5b52; margin-bottom: 22px; }
+.badge i { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 4px var(--mint-soft); animation: pulse 1.6s infinite; }
+.title { font-size: clamp(54px, 9vw, 108px); line-height: 1.05; font-weight: 800; margin: 0 0 16px; letter-spacing: -.01em; }
+.title .ch { display: inline-block; animation: hop 3.2s ease-in-out infinite; text-shadow: 0 6px 0 rgba(232,116,90,.12); }
+.title .ch:nth-child(1), .title .ch:nth-child(5) { color: var(--peach); }
+.title .ch:nth-child(2), .title .ch:nth-child(6) { color: #ff8fa3; }
+.title .ch:nth-child(3), .title .ch:nth-child(7) { color: var(--lav); }
+.title .ch:nth-child(4), .title .ch:nth-child(8) { color: var(--sky); }
+.title .ch:nth-child(9) { color: var(--mint); }
+@keyframes shine { to { background-position: 200% center; } }
+@keyframes hop { 0%, 80%, 100% { transform: translateY(0); } 88% { transform: translateY(-14px) rotate(-3deg); } }
+.catch { font-size: clamp(22px, 3.2vw, 34px); font-weight: 800; margin: 0 0 20px; }
+.catch span { display: inline-block; opacity: 0; transform: translateY(20px); animation: rise .7s cubic-bezier(.2,1.4,.4,1) forwards; }
+@keyframes rise { to { opacity: 1; transform: none; } }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 24px; border-radius: 999px; font-weight: 800; text-decoration: none;
+  background: var(--peach); color: #fff; box-shadow: 0 10px 24px rgba(232,116,90,.35); transition: transform .25s cubic-bezier(.3,1.6,.5,1), box-shadow .25s; }
+.btn:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 16px 30px rgba(232,116,90,.4); }
+.btn.ghost { background: #fff; color: var(--peach); box-shadow: var(--shadow); }
+.hero-stage { position: relative; height: 640px; }
+@media (max-width: 900px) { .hero-stage { height: 600px; } }
+
+/* phone mockup */
+.phone { position: relative; width: 290px; aspect-ratio: 9 / 20; border-radius: 42px; background: #1d1b22; padding: 11px;
+  box-shadow: var(--shadow-lg), inset 0 0 0 2px #3a3642; }
+.phone::before { content: ""; position: absolute; top: 20px; left: 50%; width: 70px; height: 20px; transform: translateX(-50%); background: #1d1b22; border-radius: 20px; z-index: 3; }
+.phone .screen { position: relative; width: 100%; height: 100%; border-radius: 32px; overflow: hidden; background: #fff; }
+.phone .screen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top; opacity: 0; transform: scale(1.04);
+  transition: opacity .9s, transform 3s ease-out; }
+.phone .screen img.on { opacity: 1; transform: scale(1); }
+.phone.sm { width: 240px; border-radius: 36px; padding: 9px; }
+.phone.sm .screen { border-radius: 28px; }
+.phone.tilt { transition: transform .5s cubic-bezier(.3,1.4,.5,1); }
+.hero .phone { position: absolute; left: 50%; top: 10px; transform: translateX(-40%) rotate(3deg); animation: float 6s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateX(-40%) rotate(1deg) translateY(-14px); } }
+.float-bubble { position: absolute; z-index: 5; background: #fff; border: 3px solid var(--lav); border-radius: 20px; padding: 10px 16px; font-weight: 800; box-shadow: var(--shadow);
+  animation: pop 4.5s cubic-bezier(.2,1.6,.4,1) infinite; transform-origin: 20% 100%; }
+.float-bubble small { display: block; color: var(--lav); font-size: 12px; }
+.float-bubble::after { content: ""; position: absolute; bottom: -10px; left: 26px; width: 16px; height: 16px; background: #fff; border-right: 3px solid var(--lav); border-bottom: 3px solid var(--lav); transform: rotate(45deg); }
+.fb1 { top: 70px; left: -10px; }
+.fb2 { top: 300px; right: -20px; border-color: var(--sky); animation-delay: 1.5s; }
+.fb2 small { color: var(--sky); } .fb2::after { border-color: var(--sky); left: auto; right: 26px; }
+.fb3 { bottom: 120px; left: 0; border-color: var(--peach); animation-delay: 3s; }
+.fb3 small { color: var(--peach); } .fb3::after { border-color: var(--peach); }
+@keyframes pop { 0% { transform: scale(0); opacity: 0; } 10% { transform: scale(1); opacity: 1; } 80% { transform: scale(1); opacity: 1; } 92%, 100% { transform: scale(.4); opacity: 0; } }
+@media (max-width: 520px) { .fb2 { right: 0; } }
+
+/* sprites (real VRM renders) */
+.sprite { width: 120px; height: 180px; background-repeat: no-repeat; background-size: calc(var(--n) * 100%) 100%; }
+.hero .walker { position: absolute; bottom: 0; left: -140px; }
+@keyframes walkAcross { from { left: -140px; } to { left: 110%; } }
+.hero .ai-wave { position: absolute; right: -10px; bottom: 40px; width: 150px; height: 225px; }
+.floaty { position: absolute; font-size: 26px; animation: floaty 8s ease-in-out infinite; opacity: .8; pointer-events: none; }
+@keyframes floaty { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-30px) rotate(12deg); } }
+.scroll-hint { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); font-size: 12px; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.scroll-hint i { width: 22px; height: 36px; border: 2px solid #d9c3b8; border-radius: 12px; position: relative; }
+.scroll-hint i::after { content: ""; position: absolute; left: 50%; top: 6px; width: 4px; height: 8px; border-radius: 2px; background: var(--peach); transform: translateX(-50%); animation: wheel 1.6s infinite; }
+@keyframes wheel { to { transform: translate(-50%, 12px); opacity: 0; } }
+
+/* waves between sections */
+.wave { position: absolute; left: 0; right: 0; width: 100%; height: 80px; pointer-events: none; }
+.wave.top { top: -1px; } .wave.bottom { bottom: -1px; transform: rotate(180deg); }
+
+/* ------------------------------------------------------------------ reveal */
+.rv { opacity: 0; transform: translateY(40px); transition: opacity .9s ease, transform .9s cubic-bezier(.2,1,.3,1); }
+.rv.in { opacity: 1; transform: none; }
+.rv.d1 { transition-delay: .1s; } .rv.d2 { transition-delay: .2s; } .rv.d3 { transition-delay: .3s; } .rv.d4 { transition-delay: .4s; }
+.rv.zoom { transform: scale(.9); } .rv.zoom.in { transform: none; }
+.rv.left { transform: translateX(-50px); } .rv.right { transform: translateX(50px); } .rv.left.in, .rv.right.in { transform: none; }
+@media (max-width: 900px) { .rv.left, .rv.right { transform: translateY(40px); } }
+
+/* ------------------------------------------------------------------ concept / living room */
+.concept { background: #fff; }
+.room-card { position: relative; border-radius: 34px; overflow: hidden; box-shadow: var(--shadow-lg); background: #f3e2cf; margin-top: 0; aspect-ratio: 1200 / 506; }
+.room-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.2s ease; }
+.room-card img.on { opacity: 1; }
+.room-wrap { position: relative; }
+.room-wrap .clock { position: absolute; top: 16px; left: 18px; z-index: 2; pointer-events: none; background: rgba(255,255,255,.9); padding: 8px 16px; border-radius: 999px; font-weight: 800; box-shadow: var(--shadow); display: flex; gap: 8px; align-items: center; }
+.room-tabs { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 22px; }
+.room-tabs button { font: inherit; font-weight: 800; border: 0; border-radius: 999px; padding: 10px 18px; background: var(--peach-soft); color: var(--peach); cursor: pointer;
+  transition: transform .2s cubic-bezier(.3,1.6,.5,1), background .2s, color .2s; }
+.room-tabs button:hover { transform: translateY(-2px); }
+.room-tabs button.on { background: var(--peach); color: #fff; }
+.legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 36px; }
+@media (max-width: 860px) { .legend { grid-template-columns: repeat(2, 1fr); } }
+.legend .it { background: var(--cream); border-radius: 22px; padding: 20px; text-align: center; transition: transform .3s cubic-bezier(.3,1.6,.5,1); }
+.legend .it:hover { transform: translateY(-6px) rotate(-1deg); }
+.legend .ic { font-size: 38px; display: inline-block; animation: bob 3s ease-in-out infinite; }
+.legend .it:nth-child(2) .ic { animation-delay: .4s; } .legend .it:nth-child(3) .ic { animation-delay: .8s; } .legend .it:nth-child(4) .ic { animation-delay: 1.2s; }
+.legend b { display: block; margin: 6px 0 4px; }
+.legend span { font-size: 14px; color: var(--muted); }
+@keyframes bob { 50% { transform: translateY(-6px); } }
+
+/* ------------------------------------------------------------------ scenes */
+.scenes { background: linear-gradient(180deg, var(--cream), #fff4ee 40%, var(--cream)); }
+.timeline { position: relative; margin-top: 60px; }
+.timeline::before { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 4px; border-radius: 4px; transform: translateX(-50%);
+  background: repeating-linear-gradient(180deg, #f3c9b8 0 14px, transparent 14px 26px); }
+@media (max-width: 900px) { .timeline::before { left: 22px; } }
+.scene { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; margin-bottom: 120px; }
+.scene:last-child { margin-bottom: 0; }
+.scene.flip .txt { order: 2; }
+@media (max-width: 900px) { .scene, .scene.flip { grid-template-columns: 1fr; gap: 30px; padding-left: 50px; } .scene.flip .txt { order: 0; } }
+.time { position: absolute; left: 50%; top: -30px; transform: translateX(-50%); z-index: 3; background: var(--ink); color: #fff; font-weight: 800; padding: 8px 18px; border-radius: 999px;
+  box-shadow: var(--shadow); white-space: nowrap; font-size: 15px; }
+@media (max-width: 900px) { .time { left: 22px; transform: translateX(-10px); top: -44px; } }
+.time::before { content: ""; position: absolute; left: 50%; top: 100%; width: 14px; height: 14px; border-radius: 50%; background: var(--peach); border: 4px solid #fff; transform: translate(-50%, 8px); box-shadow: var(--shadow); }
+.tag { display: inline-block; font-size: 13px; font-weight: 800; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px; }
+.t-peach { background: var(--peach-soft); color: var(--peach); } .t-mint { background: var(--mint-soft); color: #149a8e; }
+.t-pink { background: var(--pink-soft); color: #d9536d; } .t-sky { background: var(--sky-soft); color: #1b8bc9; } .t-lav { background: var(--lav-soft); color: #8a4fe0; }
+.point { background: #fff; border-radius: 20px; padding: 14px 18px; box-shadow: var(--shadow); margin-top: 16px; display: flex; gap: 12px; align-items: flex-start; font-size: 15px; }
+.point .pi { font-size: 26px; line-height: 1.2; }
+.visual { position: relative; display: flex; justify-content: center; align-items: center; gap: 18px; min-height: 520px; }
+.frame-wide { position: relative; width: 100%; border-radius: 26px; overflow: hidden; box-shadow: var(--shadow-lg); background: #f3e2cf; aspect-ratio: 760 / 549; }
+.frame-wide img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .35s; }
+.frame-wide img.on { opacity: 1; }
+.frame-wide .cap { position: absolute; bottom: 12px; left: 12px; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; }
+.frame-wide .dots { position: absolute; bottom: 14px; right: 14px; display: flex; gap: 6px; }
+.frame-wide .dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.55); transition: background .3s, transform .3s; }
+.frame-wide .dots i.on { background: #fff; transform: scale(1.4); }
+.stack { display: grid; gap: 18px; width: 100%; }
+.phones { display: flex; gap: 18px; justify-content: center; align-items: flex-end; flex-wrap: wrap; }
+.phones .phone:nth-child(2) { transform: translateY(30px) rotate(3deg); }
+.phones .phone:nth-child(1) { transform: rotate(-3deg); }
+.phones .phone { transition: transform .5s cubic-bezier(.3,1.4,.5,1); }
+.phones .phone:hover { transform: translateY(-10px) rotate(0) scale(1.03); z-index: 3; }
+
+/* chat demo (morning check) */
+.chatdemo { width: min(420px, 100%); background: #fff; border-radius: 28px; padding: 18px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; gap: 12px; min-height: 380px; }
+.chatdemo .hd { display: flex; gap: 10px; align-items: center; font-weight: 800; color: var(--muted); font-size: 13px; }
+.chatdemo .hd b { color: var(--ink); font-size: 15px; }
+.msg { max-width: 86%; padding: 10px 14px; border-radius: 18px; font-size: 15px; opacity: 0; transform: translateY(12px) scale(.96); transition: opacity .4s, transform .4s cubic-bezier(.3,1.6,.5,1); }
+.msg.show { opacity: 1; transform: none; }
+.msg .who { display: block; font-size: 11px; font-weight: 800; margin-bottom: 2px; }
+.msg.ai { background: var(--sky-soft); border-top-left-radius: 6px; }
+.msg.ai .who { color: #1b8bc9; }
+.msg.baba { align-self: flex-end; background: var(--mint-soft); border-top-right-radius: 6px; }
+.msg.baba .who { color: #149a8e; }
+.msg.fam { background: #fff4d6; border-top-left-radius: 6px; border: 2px dashed #f3c46b; }
+.msg.fam .who { color: #b88415; }
+.choice { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice span { white-space: nowrap; padding: 8px 14px; border-radius: 999px; border: 2px solid var(--mint); color: #149a8e; font-weight: 800; font-size: 14px; transition: background .3s, color .3s, transform .3s; }
+.choice span.tap { background: var(--mint); color: #fff; transform: scale(.94); }
+.typing { display: inline-flex; gap: 4px; padding: 12px 14px; background: var(--sky-soft); border-radius: 18px; width: max-content; }
+.typing i { width: 7px; height: 7px; border-radius: 50%; background: #7cc3ea; animation: typing 1s infinite; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes typing { 50% { transform: translateY(-5px); opacity: .5; } }
+.watch-side { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.watch-side .sprite { width: 130px; height: 195px; }
+
+/* escalation steps */
+.steps { display: grid; gap: 10px; margin-top: 18px; }
+.step { display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 18px; padding: 12px 16px; box-shadow: var(--shadow); font-size: 15px;
+  opacity: .35; transform: scale(.97); transition: opacity .5s, transform .5s cubic-bezier(.3,1.6,.5,1), box-shadow .5s; }
+.step.on { opacity: 1; transform: none; box-shadow: 0 0 0 3px var(--urgent), var(--shadow); }
+.step .s-t { font-weight: 800; color: var(--urgent); min-width: 58px; font-size: 13px; }
+.step .s-i { font-size: 22px; }
+.knocker { animation: knockShake 1.2s ease-in-out infinite; }
+@keyframes knockShake { 0%, 60%, 100% { transform: rotate(0); } 65% { transform: rotate(-4deg); } 70% { transform: rotate(4deg); } 75% { transform: rotate(-3deg); } 80% { transform: rotate(0); } }
+
+/* lights toggle */
+.lights { position: relative; }
+.lights .frame-wide img { transition: opacity .8s; }
+.switch { display: inline-flex; align-items: center; gap: 12px; margin-top: 14px; font-weight: 800; cursor: pointer; user-select: none; }
+.switch .tg { width: 58px; height: 32px; border-radius: 999px; background: #d9d3cf; position: relative; transition: background .3s; }
+.switch .tg::after { content: "💡"; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; display: grid; place-items: center; font-size: 14px;
+  transition: transform .35s cubic-bezier(.3,1.6,.5,1); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+.switch.on .tg { background: var(--sun); }
+.switch.on .tg::after { transform: translateX(26px); }
+#confetti { position: absolute; inset: 0; pointer-events: none; z-index: 4; }
+
+/* ------------------------------------------------------------------ alive */
+.alive { background: #fff; overflow: hidden; }
+.gallery { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-top: 40px; }
+@media (max-width: 900px) { .gallery { grid-template-columns: repeat(3, 1fr); } }
+.gallery .g { background: linear-gradient(180deg, var(--cream), #fff); border-radius: 24px; padding: 12px 6px 14px; text-align: center; box-shadow: var(--shadow);
+  transition: transform .3s cubic-bezier(.3,1.6,.5,1); }
+.gallery .g:hover { transform: translateY(-8px) rotate(-2deg); }
+.gallery .g .sprite { margin: 0 auto; width: 110px; height: 165px; }
+.gallery .g b { font-size: 14px; }
+.faces { margin-top: 30px; border-radius: 26px; overflow: hidden; box-shadow: var(--shadow); background: #fff; }
+.faces-labels { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: 800; font-size: 13px; color: var(--muted); padding: 8px 0; background: var(--cream); }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 40px; }
+@media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+.stat { text-align: center; background: var(--cream); border-radius: 24px; padding: 22px 10px; }
+.stat .n { font-size: 44px; font-weight: 800; color: var(--peach); line-height: 1.1; }
+.stat .l { font-size: 14px; color: var(--muted); font-weight: 700; }
+.toss { position: relative; margin-top: 40px; height: 330px; border-radius: 30px; overflow: hidden; background: linear-gradient(#e6f5ff, #fff7ef 70%, #f0d9c2 70%); box-shadow: inset 0 0 0 2px #f3e2cf; touch-action: none; }
+.toss .hint { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); background: #fff; padding: 8px 16px; border-radius: 999px; font-weight: 800; box-shadow: var(--shadow); font-size: 14px; white-space: nowrap; }
+.toss .who { position: absolute; width: 110px; height: 165px; cursor: grab; will-change: transform; }
+.toss .who:active { cursor: grabbing; }
+.toss .who .sprite { width: 100%; height: 100%; pointer-events: none; }
+.toss .say { position: absolute; background: #fff; border: 3px solid var(--lav); border-radius: 16px; padding: 4px 12px; font-weight: 800; font-size: 13px; white-space: nowrap; transform: translate(-50%, -100%); opacity: 0; transition: opacity .3s; pointer-events: none; }
+.toss .say.on { opacity: 1; }
+
+/* ------------------------------------------------------------------ ai */
+.ai-sec { background: linear-gradient(180deg, #f2f9ff, var(--cream)); }
+.ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
+@media (max-width: 900px) { .ai-grid { grid-template-columns: 1fr; } }
+.why-card { background: #fff; border-radius: 26px; box-shadow: var(--shadow-lg); padding: 22px; border: 3px solid var(--sky); position: relative; }
+.why-card .name { font-weight: 800; color: #1b8bc9; font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.why-card .name i { background: linear-gradient(90deg, #5ec8ff, #a78bfa); color: #fff; font-style: normal; font-size: 11px; padding: 0 6px; border-radius: 6px; }
+.why-card .body { font-size: 18px; font-weight: 700; margin: 6px 0 10px; }
+.why-card summary { cursor: pointer; color: #1b8bc9; font-weight: 800; font-size: 14px; list-style: none; }
+.why-card summary::before { content: "▶ "; display: inline-block; transition: transform .3s; }
+.why-card details[open] summary::before { transform: rotate(90deg); }
+.why-card ul { margin: 8px 0 0; padding-left: 20px; font-size: 14px; color: #3b5b70; }
+.why-card li { animation: rise .5s both; }
+.why-card li:nth-child(2) { animation-delay: .1s; } .why-card li:nth-child(3) { animation-delay: .2s; } .why-card li:nth-child(4) { animation-delay: .3s; }
+.flow { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: center; margin-top: 26px; }
+.flow .box { background: #fff; border-radius: 20px; padding: 14px; box-shadow: var(--shadow); text-align: center; font-size: 14px; }
+.flow .box b { display: block; font-size: 16px; }
+.flow .arrow { font-size: 26px; color: var(--peach); animation: nudge 1.4s ease-in-out infinite; }
+@keyframes nudge { 50% { transform: translateX(6px); } }
+.flow .full { grid-column: 1 / -1; }
+
+/* ------------------------------------------------------------------ care */
+.care { background: #fff; }
+.chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 40px; }
+@media (max-width: 900px) { .chips { grid-template-columns: 1fr; } }
+.chip { background: var(--cream); border-radius: 24px; padding: 22px; display: flex; gap: 14px; align-items: flex-start; transition: transform .3s cubic-bezier(.3,1.6,.5,1), box-shadow .3s; }
+.chip:hover { transform: translateY(-6px); box-shadow: var(--shadow); }
+.chip .ic { font-size: 30px; }
+.chip b { display: block; margin-bottom: 4px; }
+.chip span { font-size: 14px; color: var(--muted); }
+
+/* ------------------------------------------------------------------ review */
+.review { background: linear-gradient(180deg, var(--cream), #fff1f4); }
+.qa { margin-top: 36px; display: grid; gap: 12px; }
+.qa details { background: #fff; border-radius: 22px; box-shadow: var(--shadow); overflow: hidden; }
+.qa summary { cursor: pointer; padding: 18px 22px; font-weight: 800; list-style: none; display: flex; gap: 12px; align-items: center; }
+.qa summary::-webkit-details-marker { display: none; }
+.qa summary .q { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--pink-soft); color: #d9536d; display: grid; place-items: center; font-size: 14px; }
+.qa summary::after { content: "＋"; margin-left: auto; color: var(--peach); font-size: 20px; transition: transform .3s; }
+.qa details[open] summary::after { transform: rotate(45deg); }
+.qa .a { padding: 0 22px 20px 64px; color: #5d4c46; font-size: 15px; animation: rise .4s both; }
+
+/* ------------------------------------------------------------------ tech */
+.tech { background: #2b2433; color: #f5ede8; overflow: hidden; }
+.tech h2, .tech .kicker { color: #fff; } .tech .kicker { color: var(--peach-2); }
+.tech .lead { color: #d9ccc6; }
+.arch { display: grid; grid-template-columns: 1fr auto 1.3fr auto 1fr; gap: 14px; align-items: stretch; margin-top: 40px; }
+@media (max-width: 980px) { .arch { grid-template-columns: 1fr; } .arch .conn { transform: rotate(90deg); justify-self: center; } }
+.node { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); border-radius: 24px; padding: 20px; }
+.node h4 { margin: 0 0 8px; font-size: 18px; }
+.node ul { margin: 0; padding-left: 18px; font-size: 14px; color: #d9ccc6; }
+.conn { display: grid; place-items: center; }
+.conn span { display: block; width: 60px; height: 4px; border-radius: 4px; background: repeating-linear-gradient(90deg, var(--peach-2) 0 10px, transparent 10px 18px); background-size: 36px 4px; animation: flow 1s linear infinite; }
+@keyframes flow { to { background-position: 36px 0; } }
+.stack-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 30px; }
+.stack-chips span { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14); padding: 6px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+.browser { margin-top: 50px; border-radius: 18px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.4); background: #fff; }
+.browser .bar { height: 34px; background: #eee6e1; display: flex; align-items: center; gap: 7px; padding: 0 14px; }
+.browser .bar i { width: 11px; height: 11px; border-radius: 50%; background: #ff6b6b; } .browser .bar i:nth-child(2) { background: #ffd166; } .browser .bar i:nth-child(3) { background: #6bcb77; }
+.browser .bar span { margin-left: 14px; font-size: 12px; color: #7a6a63; background: #fff; border-radius: 8px; padding: 2px 12px; }
+
+/* ------------------------------------------------------------------ footer */
+footer { background: var(--cream); padding: 90px 0 160px; position: relative; overflow: hidden; text-align: center; }
+footer .team { font-size: 22px; font-weight: 800; }
+footer .parade { position: absolute; bottom: 0; left: 0; right: 0; height: 150px; }
+footer .parade .sprite { position: absolute; bottom: 0; width: 100px; height: 150px; }
+.ground { position: absolute; bottom: 0; left: 0; right: 0; height: 18px; background: #eeddc9; }
+
+
+/* ================================================================== phones */
+@media (max-width: 600px) {
+  body { line-height: 1.75; }
+  .wrap { width: calc(100% - 32px); }
+  section { padding: 76px 0; }
+  h2 { font-size: 26px; }
+  h3 { font-size: 20px; }
+  .lead { font-size: 15px; }
+  .lead br, h2 br.pc { display: none; }
+  nav { top: 10px; }
+  nav .bar { padding: 6px 8px 6px 14px; gap: 2px; }
+  nav a.link { font-size: 13px; padding: 6px 10px; }
+
+  /* hero */
+  .hero { min-height: auto; padding: 96px 0 70px; }
+  .badge { font-size: 11.5px; padding: 6px 12px; }
+  .title { font-size: 60px; }
+  .catch { font-size: 22px; }
+  .cta .btn { flex: 1 1 100%; justify-content: center; }
+  .hero-stage { height: 560px; margin-top: 10px; }
+  .hero .phone { width: 236px; left: 50%; transform: translateX(-50%) rotate(2deg); }
+  @keyframes float { 50% { transform: translateX(-50%) rotate(0deg) translateY(-10px); } }
+  .float-bubble { font-size: 13px; padding: 7px 12px; }
+  .fb1 { top: 40px; left: 0; }
+  .fb2 { top: 250px; right: 0; max-width: 62%; }
+  .fb3 { bottom: 110px; left: 0; }
+  .hero .ai-wave { width: 100px; height: 150px; right: -6px; bottom: 30px; }
+  .hero .walker { width: 90px; height: 135px; }
+  .scroll-hint { display: none; }
+
+  /* living room */
+  .room-card { border-radius: 20px; }
+  .room-wrap { margin-top: 26px !important; }
+  .room-wrap .clock { position: static; margin: 10px auto 0; width: fit-content; max-width: calc(100% - 20px); font-size: 12.5px; border-radius: 14px;
+    background: #fff; order: 2; }
+  .room-wrap { display: flex; flex-direction: column; }
+  .room-tabs button { padding: 8px 14px; font-size: 14px; }
+  .legend { gap: 10px; }
+  .legend .it { padding: 14px 10px; }
+  .legend .ic { font-size: 30px; }
+  .legend span { font-size: 12.5px; }
+
+  /* timeline: no side rail, time badges flow with the content */
+  .timeline { margin-top: 30px; }
+  .timeline::before { display: none; }
+  .scene, .scene.flip { padding-left: 0; gap: 22px; margin-bottom: 76px; }
+  .scene[style] { margin-top: 30px !important; }
+  .time { position: static; transform: none; display: inline-block; margin-bottom: 12px; font-size: 14px; }
+  .time::before { display: none; }
+  .scene > .time { justify-self: start; }
+  .point { font-size: 14px; padding: 12px 14px; }
+  .visual { min-height: 0; flex-direction: column; gap: 16px; }
+  .frame-wide { border-radius: 18px; }
+  .phones { flex-wrap: nowrap; gap: 10px; width: 100%; }
+  .phones .phone.sm { width: calc(50% - 5px); border-radius: 26px; padding: 6px; }
+  .phones .phone.sm .screen { border-radius: 21px; }
+  .phones .phone.sm::before { width: 44px; height: 12px; top: 12px; }
+  .phones .phone:nth-child(2) { transform: translateY(16px) rotate(2deg); }
+  .phones .phone:nth-child(1) { transform: rotate(-2deg); }
+  .chatdemo { min-height: 250px; border-radius: 22px; }
+  .watch-side { flex-direction: row; align-items: flex-end; justify-content: center; gap: 6px; width: 100%; }
+  .watch-side .sprite { width: 96px; height: 144px; }
+  .watch-side .phone.sm { width: 200px; }
+  .steps .step { font-size: 13.5px; padding: 10px 12px; }
+  .step .s-t { min-width: 50px; font-size: 12px; }
+
+  /* chibi gallery */
+  .gallery { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .gallery .g .sprite { width: 100px; height: 150px; }
+  .faces-labels { font-size: 9.5px; letter-spacing: -.02em; }
+  .stat .n { font-size: 34px; }
+  .toss { height: 280px; }
+  .toss .hint { font-size: 12.5px; }
+
+  /* AI */
+  .ai-grid { gap: 30px; }
+  .flow { grid-template-columns: 1fr; }
+  .flow .arrow { justify-self: center; transform: rotate(90deg); animation: none; }
+  .why-card { padding: 16px; }
+  .why-card .body { font-size: 16px; }
+  .why-card ul { font-size: 13px; }
+
+  .chips { gap: 10px; }
+  .chip { padding: 16px; }
+  .qa summary { padding: 14px 16px; font-size: 15px; }
+  .qa .a { padding: 0 16px 16px 16px; font-size: 14px; }
+  .node { padding: 16px; }
+  .arch { gap: 8px; }
+  .browser { border-radius: 12px; }
+  footer { padding: 70px 0 150px; }
+}
+@keyframes pulse { 50% { box-shadow: 0 0 0 8px transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
+  .rv { opacity: 1; transform: none; }
+}
+</style>
+</head>
+<body>
+
+<nav><div class="bar">
+  <a class="logo" href="#top"><span>🏠</span>FamiChibi</a>
+  <a class="link" href="#concept">リビング</a>
+  <a class="link" href="#scenes">4つの場面</a>
+  <a class="link opt" href="#alive">ちびっこ</a>
+  <a class="link opt" href="#ai">AI</a>
+  <a class="link opt" href="#review">審査コメント</a>
+  <a class="link opt" href="#tech">しくみ</a>
+</div></nav>
+
+<!-- =================================================================== HERO -->
+<header class="hero" id="top">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <span class="floaty" style="left:6%;top:22%">✨</span>
+  <span class="floaty" style="left:44%;top:14%;animation-delay:-2s">🌙</span>
+  <span class="floaty" style="left:12%;bottom:18%;animation-delay:-4s">💕</span>
+  <span class="floaty" style="right:6%;top:12%;animation-delay:-6s">🏠</span>
+  <div class="wrap hero-grid">
+    <div>
+      <div class="badge rv"><i></i>パソコン甲子園2026 モバイル部門 ／ テーマ「スマホ家族」</div>
+      <h1 class="title" aria-label="FamiChibi"><span class="ch">F</span><span class="ch" style="animation-delay:.1s">a</span><span class="ch" style="animation-delay:.2s">m</span><span class="ch" style="animation-delay:.3s">i</span><span class="ch" style="animation-delay:.4s">C</span><span class="ch" style="animation-delay:.5s">h</span><span class="ch" style="animation-delay:.6s">i</span><span class="ch" style="animation-delay:.7s">b</span><span class="ch" style="animation-delay:.8s">i</span></h1>
+      <p class="catch" id="catch">家族がいつでもそこにいる。</p>
+      <p class="lead rv d2">連絡を送るアプリ、ではありません。<br>
+        スマホの中に、家族の<b>“ちびっこ”</b>が暮らす小さなリビングを置くアプリです。<br>
+        誰も何も送っていなくても、<span class="hl">家族の「今」がそっと伝わります。</span></p>
+      <div class="cta rv d3">
+        <a class="btn" href="#scenes">4つの場面を見る →</a>
+        <a class="btn ghost" href="#concept">🏠 リビングをのぞく</a>
+      </div>
+    </div>
+    <div class="hero-stage rv zoom d2">
+      <div class="phone" id="heroPhone"><div class="screen">
+        <img src="img/home-arrive.jpg" alt="ホーム画面に歩いてきた妹のちびっこが「ただいま！」" class="on">
+        <img src="img/room-night.jpg" alt="アプリのリビング（夜）">
+        <img src="img/lock.jpg" alt="ロック画面に集まるちびっこ">
+        <img src="img/home-party.jpg" alt="誕生日に家族全員のちびっこが集合">
+      </div></div>
+      <div class="float-bubble fb1"><small>● 妹</small>ただいま！</div>
+      <div class="float-bubble fb2"><small>● ちびAI</small>おばあちゃん、今日も元気だって😊</div>
+      <div class="float-bubble fb3"><small>● 母</small>カレー作っておいたよ🍛</div>
+      <div class="sprite ai-wave" style="--n:8;--dur:.9s;background-image:url(img/wave-ai.png)" aria-hidden="true"></div>
+      <div class="sprite walker" style="--n:8;--dur:1.05s;background-image:url(img/walk-imo.png)" aria-hidden="true"></div>
+    </div>
+  </div>
+  <div class="scroll-hint"><i></i>scroll</div>
+</header>
+
+<!-- =================================================================== CONCEPT -->
+<section class="concept" id="concept">
+  <svg class="wave top" viewBox="0 0 1440 80" preserveAspectRatio="none"><path fill="#fff8f2" d="M0,0 L1440,0 L1440,30 C1200,80 960,0 720,30 C480,60 240,10 0,40 Z"/></svg>
+  <div class="wrap">
+    <div class="center">
+      <div class="kicker rv">CONCEPT</div>
+      <h2 class="rv">連絡アプリ、じゃなくて。<br><span class="hl">家族のリビング</span>を、スマホの中に。</h2>
+      <p class="lead rv d1">窓の外の空は本物の時間。家にいる人はリビングに、寝ている人はソファでうとうと、出かけている人は「おでかけボード」に。<br>ちびっこたちは勝手に歩いたり、座ったり、おしゃべりしたりして過ごしています。</p>
+    </div>
+    <div class="room-wrap" style="margin-top:40px">
+    <div class="room-card rv zoom" id="roomCard">
+      <img src="img/room-10.jpg" alt="朝のリビング" class="on" data-t="🌤 10:00　おばあちゃんはソファでお昼寝、父と妹はおでかけ中">
+      <img src="img/room-17.4-b.jpg" alt="夕方のリビング" data-t="🌇 17:24　妹が学校から帰ってきた">
+      <img src="img/room-night-wide.jpg" alt="夜のリビング" data-t="🌙 21:30　みんな家でのんびり">
+      <img src="img/room-dark-wide.jpg" alt="電気を消した夜のリビング" data-t="🌑 「電気消して」→ 本当に部屋が暗くなる">
+    </div>
+      <div class="clock" id="roomClock">🌤 10:00</div>
+    </div>
+    <div class="room-tabs rv d1" id="roomTabs">
+      <button class="on" data-i="0">🌤 朝</button><button data-i="1">🌇 夕方</button><button data-i="2">🌙 夜</button><button data-i="3">🌑 消灯</button>
+    </div>
+    <div class="legend">
+      <div class="it rv d1"><div class="ic">🏠</div><b>家にいる</b><span>リビングで過ごす。<br>家のWi-Fiにつながっているか</span></div>
+      <div class="it rv d2"><div class="ic">💤</div><b>寝ている</b><span>ソファでうとうと。<br>夜に長くスマホを置いたまま</span></div>
+      <div class="it rv d3"><div class="ic">🚶</div><b>おでかけ中</b><span>おでかけボードに。<br>予定があれば「学校（〜15:30）」</span></div>
+      <div class="it rv d4"><div class="ic">📍</div><b>位置情報は使わない</b><span>カメラも位置情報も不要。<br>送るのは「気配」だけ</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== SCENES -->
+<section class="scenes" id="scenes">
+  <div class="wrap">
+    <div class="center">
+      <div class="kicker rv">4 SCENES</div>
+      <h2 class="rv">ある家族の、1日。</h2>
+      <p class="lead rv d1">どの場面も、<span class="hl">相手が何も操作しなくても</span>伝わるように作りました。</p>
+    </div>
+
+    <div class="timeline">
+      <!-- scene 1 -->
+      <div class="scene" style="margin-top:80px">
+        <div class="time">17:05　放課後</div>
+        <div class="txt rv left">
+          <span class="tag t-lav">子どもの帰宅見守り</span>
+          <h3>「ただいま」を、打たなくても届ける。</h3>
+          <p>仕事中の母のスマホ。画面の端から娘のちびっこがトコトコ歩いてきて「ただいま！」。<br>
+            アプリのリビングでは玄関のドアが開き、家族みんなが手を振ってお出迎え。</p>
+          <div class="point"><div class="pi">📶</div><div><b>娘は何も操作していません。</b><br>スマホが家のWi-Fi（家族サーバー）につながったことを「帰宅」として検知。吹き出しの「おかえり！」をタップすれば返事になります。</div></div>
+        </div>
+        <div class="visual rv right">
+          <div class="stack">
+            <div class="frame-wide" id="flipArrive">
+              <img src="img/arrive-1.jpg" alt="ドアが開く" class="on"><img src="img/arrive-2.jpg" alt="妹が入ってくる"><img src="img/arrive-3.jpg" alt="ただいま！"><img src="img/arrive-4.jpg" alt="みんなが手を振る"><img src="img/arrive-5.jpg" alt="いつものリビング">
+              <span class="cap">実機のリビング画面（ドアが開く→ただいま）</span>
+              <div class="dots"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- scene 2 -->
+      <div class="scene flip">
+        <div class="time">9:00　離れて暮らす祖母</div>
+        <div class="txt rv right">
+          <span class="tag t-mint">カメラを使わない見守り</span>
+          <h3>毎朝の「元気？」が、家族みんなに届く。</h3>
+          <p>見守りをONにした祖母のスマホに、毎朝ちびAIが「おはよう！今日も元気？」。大きなボタンで返事をすると、その一言がそのまま家族へ。</p>
+          <div class="point"><div class="pi">🌼</div><div>「ちょっと調子わるい」なら急ぎのお知らせに。返事がない・日中4時間スマホに触れていない・電池が15%を切った——<b>そんな時だけ</b>、家族にそっと知らせます。見守りは本人にも表示され、こっそり監視はしません。</div></div>
+        </div>
+        <div class="visual rv left">
+          <div class="chatdemo" id="chatdemo" aria-label="朝のあいさつのデモ">
+            <div class="hd">🔔 <b>おばあちゃんのスマホ</b> 9:00</div>
+          </div>
+          <div class="watch-side">
+            <div class="sprite" style="--n:8;--dur:.9s;background-image:url(img/cheer-baba.png)" aria-hidden="true"></div>
+            <div class="phone sm"><div class="screen"><img class="on" src="img/watch.jpg" alt="見守り設定の画面" style="object-position:center"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- scene 3 -->
+      <div class="scene">
+        <div class="time">18:10　雨の夕方</div>
+        <div class="txt rv left">
+          <span class="tag t-pink">見逃せない連絡</span>
+          <h3>見逃せない連絡は、見逃させない。</h3>
+          <p>「駅まで迎えに来て！」をちびっこが<b>急ぎ</b>と判断。スマホの窓をコンコンとノックし、画面が消えていてもロック画面の上で待っています。</p>
+          <div class="steps" id="steps">
+            <div class="step"><span class="s-t">0秒</span><span class="s-i">🪟</span>ちびっこが歩いてきて窓をノック（返事ボタン付き）</div>
+            <div class="step"><span class="s-t">画面OFF</span><span class="s-i">🔒</span>ロック画面にちびっこが集合、解除せずに返信</div>
+            <div class="step"><span class="s-t">1分</span><span class="s-i">✊</span>まだ未読なら、もう一度ノック</div>
+            <div class="step"><span class="s-t">2.5分</span><span class="s-i">📣</span>誰も見ていなければAIが家族全員に呼びかけ</div>
+            <div class="step"><span class="s-t">既読</span><span class="s-i">👀</span>送り主のスマホに「見たよ！」とちびっこが報告</div>
+          </div>
+        </div>
+        <div class="visual rv right">
+          <div class="phones">
+            <div class="phone sm knocker"><div class="screen"><img class="on" src="img/home-pickup.jpg" alt="急ぎの連絡を届けに来たちびっこ"></div></div>
+            <div class="phone sm"><div class="screen"><img class="on" src="img/lock.jpg" alt="ロック画面のちびっこ"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- scene 4 -->
+      <div class="scene flip">
+        <div class="time">21:30　一人暮らしの兄</div>
+        <div class="txt rv right">
+          <span class="tag t-sky">遠くても、同じリビングに</span>
+          <h3>アプリを開けば、実家の夜がそこにある。</h3>
+          <p>母はソファでうたた寝、父は「おでかけボード」に「3時間前から」。ちびAIに「電気消して」と頼むと、実家の照明が消えて（Home Assistant / MCP）、リビングの部屋も<b>本当に暗くなります</b>。</p>
+          <label class="switch on" id="lightSwitch"><span class="tg"></span><span id="lightLabel">リビングの電気：ON</span></label>
+          <div class="point"><div class="pi">🎂</div><div>誕生日の0時には、おでかけ中の家族も含めて<b>全員のちびっこ</b>が集まってお祝い。事前に「寄せ書き」も予約できます。</div></div>
+        </div>
+        <div class="visual rv left">
+          <div class="stack lights">
+            <div class="frame-wide" id="lightsFrame" style="aspect-ratio:1200/506">
+              <img class="on" src="img/room-night-wide.jpg" alt="夜のリビング（電気ON）"><img src="img/room-dark-wide.jpg" alt="夜のリビング（電気OFF）">
+              <span class="cap">スイッチを押してみてね</span>
+            </div>
+            <div class="phones" style="position:relative">
+              <canvas id="confetti"></canvas>
+              <div class="phone sm"><div class="screen"><img class="on" src="img/ai-why.jpg" alt="ちびAIに電気消してと頼む"></div></div>
+              <div class="phone sm"><div class="screen"><img class="on" src="img/home-party.jpg" alt="ホーム画面で誕生日パーティー"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== ALIVE -->
+<section class="alive" id="alive">
+  <div class="wrap">
+    <div class="center">
+      <div class="kicker rv">CHIBI</div>
+      <h2 class="rv">ちびっこは、生きている。</h2>
+      <p class="lead rv d1">メッセージの気持ちを読みとって、表情と動きで届けます。<br>アバターはVRM（VRM0 / VRM1 両対応）。普段使っている自分のアバターも、そのまま家族のもとへ。</p>
+    </div>
+    <div class="gallery">
+      <div class="g rv d1"><div class="sprite" style="--n:8;--dur:1.05s;background-image:url(img/walk-mama.png)"></div><b>🚶 歩いてくる</b></div>
+      <div class="g rv d2"><div class="sprite" style="--n:8;--dur:.9s;background-image:url(img/wave-ai.png)"></div><b>👋 手を振る</b></div>
+      <div class="g rv d3"><div class="sprite" style="--n:12;--dur:1.8s;background-image:url(img/dance-mama.png)"></div><b>💃 踊って通知</b></div>
+      <div class="g rv d1"><div class="sprite" style="--n:8;--dur:.9s;background-image:url(img/cheer-baba.png)"></div><b>🎉 お祝い</b></div>
+      <div class="g rv d2"><div class="sprite" style="--n:8;--dur:.5s;background-image:url(img/knock-imo.png)"></div><b>✊ 窓をノック</b></div>
+      <div class="g rv d3"><div class="sprite" style="--n:8;--dur:4s;background-image:url(img/sleep-baba.png)"></div><b>💤 うとうと</b></div>
+    </div>
+    <div class="faces rv zoom">
+      <img src="img/faces.jpg" alt="7つの表情">
+      <div class="faces-labels"><span>ふつう</span><span>うれしい</span><span>おこ</span><span>かなしい</span><span>びっくり</span><span>ほっこり</span><span>おしゃべり</span></div>
+    </div>
+    <div class="stats">
+      <div class="stat rv d1"><div class="n" data-count="25">0</div><div class="l">モーション</div></div>
+      <div class="stat rv d2"><div class="n" data-count="10">0</div><div class="l">感情の読みとり</div></div>
+      <div class="stat rv d3"><div class="n" data-count="6">0</div><div class="l">同梱アバター</div></div>
+      <div class="stat rv d4"><div class="n" data-count="0" data-text="∞">0</div><div class="l">自分のVRMも使える</div></div>
+    </div>
+    <div class="toss rv" id="toss">
+      <div class="hint">👆 つかんで投げてみて！（アプリでもできます）</div>
+      <div class="who" id="tossChibi"><div class="sprite" style="--n:8;--dur:.9s;background-image:url(img/wave-ai.png)"></div></div>
+      <div class="say" id="tossSay">わっ！</div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== AI -->
+<section class="ai-sec" id="ai">
+  <div class="wrap ai-grid">
+    <div class="rv left">
+      <div class="kicker">AI CHIBI</div>
+      <h2>AIは、<span class="hl">「なぜ？」</span>を話す。</h2>
+      <p class="lead">家族グループに住む“ちびAI”。家電の操作、予定の確認、代わりに聞いてくる、過去の会話を探す——。どの返事にも「なぜそうしたか」がついています。</p>
+      <div class="flow">
+        <div class="box"><b>🧩 ルールエンジン</b>電気・予定・質問・リマインド<br>同じ入力には同じ動き</div>
+        <div class="arrow">＋</div>
+        <div class="box"><b>🦙 ローカルLLM</b>雑談などの自由会話だけ<br>（Ollama / Qwen）</div>
+        <div class="box full"><b>🔌 MCPで家電とつながる</b>デモ用の仮想の家 ⇄ Home Assistant（ha-mcp）を設定で切り替え</div>
+      </div>
+      <p style="margin-top:18px;font-size:15px;color:var(--muted)">LLMがなくても主要機能はすべて動きます。本人しか知らないこと（非公開の予定や気持ち）は推測せず、<b>本人に聞きに行きます</b>。</p>
+    </div>
+    <div class="rv right">
+      <div class="why-card">
+        <div class="name">● ちびAI <i>AI</i></div>
+        <div class="body">土曜の予定を見てきたよ！<br>母は空いてる、妹は部活（〜13:00）。<br>父はカレンダーが鍵付きだから、直接聞きに行ってくるね🏃</div>
+        <details open>
+          <summary>なぜ？（AIの判断根拠）</summary>
+          <ul>
+            <li>判断: ルールエンジン（確定的な処理）</li>
+            <li>📅 10/3のカレンダーを確認（公開3人・非公開1人）</li>
+            <li>🙋 父 に直接確認中（本人の回答だけを伝えます）</li>
+          </ul>
+        </details>
+      </div>
+      <div class="phone sm" style="margin:26px auto 0;transform:rotate(-2deg)"><div class="screen"><img class="on" src="img/memo.jpg" alt="冷蔵庫メモ。日時を自動で読みとり、その時刻にちびっこが踊って知らせる"></div></div>
+      <p class="center" style="font-size:14px;color:var(--muted);margin-top:10px">「15日16時：カレー作っておいたよ」→ 日時を読みとり、その時刻に母のちびっこが踊って通知</p>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== CARE -->
+<section class="care">
+  <div class="wrap">
+    <div class="center">
+      <div class="kicker rv">KINDNESS BY DESIGN</div>
+      <h2 class="rv">ちょうどいい、おせっかい。</h2>
+    </div>
+    <div class="chips">
+      <div class="chip rv d1"><div class="ic">📷</div><div><b>カメラも位置情報も使わない</b><span>共有するのは「家にいる/寝ている/使っている」だけ。共有は自分でOFFにもできます。</span></div></div>
+      <div class="chip rv d2"><div class="ic">👀</div><div><b>見守りは本人にも見える</b><span>ONにすると本人のちびっこが「見守りをONにしたよ」と伝えに行きます。</span></div></div>
+      <div class="chip rv d3"><div class="ic">🗣</div><div><b>気持ちを代弁しない</b><span>AIは本人の言葉だけを伝える。わからないことは本人に聞く。</span></div></div>
+      <div class="chip rv d1"><div class="ic">🌙</div><div><b>おやすみ時間はそっと</b><span>急ぎ以外は静かに届け、急ぎだけは起こしてでも届けます。</span></div></div>
+      <div class="chip rv d2"><div class="ic">📇</div><div><b>NFCカードで入力ゼロ参加</b><span>名前入りのカードをかざすだけで、おばあちゃんも家族サーバーへ。</span></div></div>
+      <div class="chip rv d3"><div class="ic">🏡</div><div><b>家族のデータは家に</b><span>家族サーバーはPCやラズパイで自分たちで動かせます。</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== REVIEW -->
+<section class="review" id="review">
+  <div class="wrap" style="max-width:900px">
+    <div class="center">
+      <div class="kicker rv">FEEDBACK</div>
+      <h2 class="rv">予選でいただいたコメントに、<br>こう応えました。</h2>
+    </div>
+    <div class="qa">
+      <details class="rv"><summary><span class="q">Q</span>ユースケースの考えが不足しています</summary><div class="a">「子どもの帰宅」「祖父母の見守り」「見逃せない連絡」「一人暮らしの家族」の4つの場面を中心に設計し直しました。どれも<b>相手が何も操作しなくても</b>伝わることを大切にしています。</div></details>
+      <details class="rv"><summary><span class="q">Q</span>通知を見逃した人への対応（ロック画面への常時表示など）</summary><div class="a">ロック画面の上にちびっこが現れ、解除せずに返信できます。さらに「窓をノック → 1分後に再ノック → 2.5分後にAIが家族全員へ呼びかけ」と段階的に知らせ、既読になると送り主へ「見たよ！」を報告します。</div></details>
+      <details class="rv"><summary><span class="q">Q</span>表情や動きがメッセージに合わせて変わると面白い</summary><div class="a">10種類の感情と緊急度を読みとり、25種類のモーション・7つの表情・パーティクルから届け方を自動で選びます。「なぜこの届け方？」も表示できます。</div></details>
+      <details class="rv"><summary><span class="q">Q</span>複数のちびっこが表示されても文字が見やすいUIを</summary><div class="a">吹き出しは重ならないように自動配置。複数あるときは「急ぎ → タップしたもの → 最新」の1つだけを全文表示し、残りは1行のチップにたたみます。文字サイズ設定と、おじいちゃん・おばあちゃんモードもあります。</div></details>
+      <details class="rv"><summary><span class="q">Q</span>AIの判断方法や妥当性・信頼性を説明してほしい</summary><div class="a">すべてのAIの返事に「なぜ？」（使った道具・参照した会話・判断のきっかけ）を表示。家電や予定などの操作は決定的なルールで処理し、LLMは自由会話だけを担当します。本人の気持ちや予定は推測せず、本人に聞きます。</div></details>
+      <details class="rv"><summary><span class="q">Q</span>他のSNSとの使い分けが負担にならないか</summary><div class="a">Androidの共有メニュー「ちびっこに届けてもらう」で、どのアプリからでもそのまま送れます。通知やちびっこの吹き出しからもワンタップで返信できます。</div></details>
+      <details class="rv"><summary><span class="q">Q</span>機能の盛り込みすぎ・実装面の課題</summary><div class="a">「家族の気配」という1つのコンセプトに機能を束ね直しました。IoTやAIは家族ごとにON/OFFでき、LLMがなくても動きます。常駐時はアバターのテクスチャを自動で軽量化し、実機（Android 16）で動作を確認しています。</div></details>
+    </div>
+  </div>
+</section>
+
+<!-- =================================================================== TECH -->
+<section class="tech" id="tech">
+  <div class="wrap">
+    <div class="kicker rv">HOW IT WORKS</div>
+    <h2 class="rv">しくみ</h2>
+    <p class="lead rv d1">スマホが全部を背負わないように、AIや家電の操作は家族サーバー側へ。</p>
+    <div class="arch">
+      <div class="node rv d1"><h4>📱 Android</h4><ul><li>常駐ちびっこ（オーバーレイ）</li><li>ロック画面ちびっこ</li><li>けはい（在宅・睡眠・移動）</li><li>チャット・メモ・予定・通話</li><li>NFC参加・共有メニュー・TTS</li></ul></div>
+      <div class="conn"><span></span></div>
+      <div class="node rv d2"><h4>🏡 家族サーバー（Python）</h4><ul><li>FastAPI + SQLite（全文検索）</li><li>WebSocketでリアルタイム配信</li><li>感情・緊急度の読みとり、届け方の判断</li><li>見守り・見逃し対策・誕生日のスケジューラ</li><li>AIちびっこ（ルール＋LLM）</li></ul></div>
+      <div class="conn"><span></span></div>
+      <div class="node rv d3"><h4>🔌 つながる先</h4><ul><li>Ollama（Qwen など）</li><li>MCP：仮想の家 / Home Assistant</li><li>WebRTC 音声通話</li><li>Webクライアント</li></ul></div>
+    </div>
+    <div class="stack-chips rv">
+      <span>Kotlin</span><span>Jetpack Compose</span><span>three.js</span><span>@pixiv/three-vrm</span><span>WebView</span><span>WebRTC</span><span>Python</span><span>FastAPI</span><span>SQLite FTS5</span><span>MCP</span><span>Ollama</span><span>Home Assistant</span><span>NFC</span>
+    </div>
+    <div class="browser rv zoom">
+      <div class="bar"><i></i><i></i><i></i><span>http://家族サーバー:8000</span></div>
+      <img src="img/web-desktop.jpg" alt="Webクライアント">
+    </div>
+    <p class="center rv" style="margin-top:14px;color:#d9ccc6;font-size:14px">パソコンのブラウザからも、同じリビングに参加できます。</p>
+  </div>
+</section>
+
+<!-- =================================================================== FOOTER -->
+<footer>
+  <div class="wrap">
+    <div class="team rv">Team Daijobu</div>
+    <p class="rv d1" style="color:var(--muted)">鳥羽商船高等専門学校 ／ パソコン甲子園2026 モバイル部門</p>
+    <p class="rv d2" style="font-size:12px;color:var(--muted);margin-top:30px">アバター：VRoid Project サンプルモデル（© pixiv Inc.）、ニコニ立体ちゃん（© DWANGO Co., Ltd.）、VRM1 Sample（© pixiv Inc.）<br>VRM描画：three.js / @pixiv/three-vrm（MIT）</p>
+  </div>
+  <div class="parade">
+    <div class="sprite" style="--n:8;--dur:1.05s;--walk:26s;background-image:url(img/walk-imo.png);animation-delay:0s,-3s"></div>
+    <div class="sprite" style="--n:8;--dur:1.05s;--walk:26s;background-image:url(img/walk-mama.png);animation-delay:0s,-6s"></div>
+  </div>
+  <div class="ground"></div>
+</footer>
+
+<script>
+(() => {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+  // --- sprite sheets: steps() over N frames (CSS custom property based) -------------------------
+  const style = document.createElement('style');
+  const ns = new Set($$('.sprite').map((e) => getComputedStyle(e).getPropertyValue('--n').trim()));
+  style.textContent = [...ns].map((n) => `@keyframes sp${n}{from{background-position-x:0}to{background-position-x:100%}}`).join('');
+  document.head.appendChild(style);
+  for (const el of $$('.sprite')) {
+    const delay = el.style.animationDelay;
+    const n = +getComputedStyle(el).getPropertyValue('--n');
+    const dur = getComputedStyle(el).getPropertyValue('--dur').trim() || '1s';
+    const extra = el.closest('.parade') ? `, walkAcross ${getComputedStyle(el).getPropertyValue('--walk').trim()} linear infinite` : el.classList.contains('walker') ? ', walkAcross 14s linear infinite' : '';
+    el.style.animation = `sp${n} ${dur} steps(${n}, jump-none) infinite${extra}`;
+    if (delay) el.style.animationDelay = delay;
+  }
+
+  // --- hero catchphrase: letter by letter -----------------------------------------------------------
+  const c = $('#catch');
+  c.innerHTML = [...c.textContent].map((ch, i) => `<span style="animation-delay:${0.4 + i * 0.06}s">${ch}</span>`).join('');
+
+  // --- reveal on scroll ------------------------------------------------------------------------------
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.15 });
+  $$('.rv').forEach((el) => io.observe(el));
+
+  // --- simple slideshows ---------------------------------------------------------------------------------
+  function cycle(container, ms, onChange) {
+    const imgs = $$('img', container);
+    let i = 0;
+    const show = (k) => { imgs.forEach((im, j) => im.classList.toggle('on', j === k)); i = k; onChange && onChange(k); };
+    let t = null;
+    const start = () => { if (!t && !reduce) t = setInterval(() => show((i + 1) % imgs.length), ms); };
+    const stop = () => { clearInterval(t); t = null; };
+    new IntersectionObserver((es) => es.forEach((e) => (e.isIntersecting ? start() : stop()))).observe(container);
+    return { show, stop, start };
+  }
+  cycle($('#heroPhone .screen'), 3400);
+
+  // arrival flipbook (real device frames)
+  const dots = $$('#flipArrive .dots i');
+  const arrive = $('#flipArrive');
+  const frames = $$('img', arrive);
+  const holds = [700, 700, 1500, 1300, 1800];
+  let fi = 0;
+  const flip = () => {
+    frames.forEach((f, j) => f.classList.toggle('on', j === fi));
+    dots.forEach((d, j) => d.classList.toggle('on', j === fi));
+    const h = holds[fi]; fi = (fi + 1) % frames.length;
+    setTimeout(flip, reduce ? 99999 : h);
+  };
+  flip();
+
+  // living room by time of day
+  const clock = $('#roomClock');
+  const roomImgs = $$('#roomCard img');
+  const tabs = $$('#roomTabs button');
+  const room = cycle($('#roomCard'), 3800, (k) => {
+    clock.textContent = roomImgs[k].dataset.t;
+    tabs.forEach((b, j) => b.classList.toggle('on', j === k));
+  });
+  clock.textContent = roomImgs[0].dataset.t;
+  tabs.forEach((b) => b.addEventListener('click', () => { room.stop(); room.show(+b.dataset.i); }));
+
+  // lights switch
+  const sw = $('#lightSwitch');
+  const lights = $$('#lightsFrame img');
+  sw.addEventListener('click', (e) => {
+    e.preventDefault();
+    const on = !sw.classList.contains('on');
+    sw.classList.toggle('on', on);
+    lights[0].classList.toggle('on', on); lights[1].classList.toggle('on', !on);
+    $('#lightLabel').textContent = on ? 'リビングの電気：ON' : 'ちびAI「消しておいたよ！💡」';
+  });
+
+  // --- morning check chat (loops while visible) -----------------------------------------------------------
+  const chat = $('#chatdemo');
+  const script = [
+    ['typing', 800], ['ai', 'ちびAI', 'おはよう！今日も元気？☀', 900], ['choice', 1400], ['tap', 700],
+    ['baba', 'おばあちゃん', '元気だよ！', 1300], ['typing', 700], ['fam', '家族みんなのスマホへ', 'おばあちゃんから朝のお返事：「元気だよ！」 今日も元気みたい😊', 3800],
+  ];
+  let running = false, gen = 0;
+  async function play() {
+    if (running) return; running = true;
+    const my = ++gen;
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const alive = () => running && my === gen;
+    while (alive()) {
+      $$('.msg, .typing, .choice', chat).forEach((e) => e.remove());
+      let choice;
+      for (const s of script) {
+        if (!alive()) return;
+        if (s[0] === 'typing') { const t = document.createElement('div'); t.className = 'typing'; t.innerHTML = '<i></i><i></i><i></i>'; chat.appendChild(t); await wait(s[1]); t.remove(); continue; }
+        if (s[0] === 'choice') { choice = document.createElement('div'); choice.className = 'choice'; choice.innerHTML = '<span>元気だよ！</span><span>ちょっと調子わるい</span>'; chat.appendChild(choice); await wait(s[1]); continue; }
+        if (s[0] === 'tap') { choice.firstChild.classList.add('tap'); await wait(s[1]); choice.remove(); continue; }
+        const m = document.createElement('div'); m.className = 'msg ' + s[0]; m.innerHTML = `<span class="who">${s[1]}</span>${s[2]}`;
+        chat.appendChild(m); requestAnimationFrame(() => m.classList.add('show')); await wait(s[3]);
+      }
+      await wait(1500);
+    }
+  }
+  new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting && !reduce) play(); else running = false; })).observe(chat);
+
+  // --- escalation steps highlight ---------------------------------------------------------------------------
+  const steps = $$('#steps .step');
+  let si = 0;
+  setInterval(() => { steps.forEach((s, j) => s.classList.toggle('on', j <= si)); si = (si + 1) % (steps.length + 1); }, reduce ? 99999 : 1300);
+
+  // --- counters ---------------------------------------------------------------------------------------------
+  const cio = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    cio.unobserve(e.target);
+    const el = e.target, to = +el.dataset.count;
+    if (el.dataset.text) { setTimeout(() => (el.textContent = el.dataset.text), 600); return; }
+    const t0 = performance.now();
+    const tick = (t) => { const k = Math.min(1, (t - t0) / 1200); el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }), { threshold: .6 });
+  $$('[data-count]').forEach((el) => cio.observe(el));
+
+  // --- confetti around the party phone ------------------------------------------------------------------------
+  const cv = $('#confetti'), cx = cv.getContext('2d');
+  let parts = [], confettiOn = false;
+  const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#c77dff', '#ff9f1c'];
+  function resizeCv() { const r = cv.getBoundingClientRect(); cv.width = r.width * devicePixelRatio; cv.height = r.height * devicePixelRatio; }
+  function burst() { const W = cv.width; for (let i = 0; i < 70; i++) parts.push({ x: Math.random() * W, y: -20 - Math.random() * 200, vx: (Math.random() - .5) * 2, vy: 2 + Math.random() * 3, r: Math.random() * 6, c: colors[i % colors.length], s: 6 + Math.random() * 6 }); }
+  function drawCv() {
+    if (!confettiOn) return;
+    cx.clearRect(0, 0, cv.width, cv.height);
+    parts = parts.filter((p) => p.y < cv.height + 20);
+    for (const p of parts) { p.x += p.vx + Math.sin(p.y / 30); p.y += p.vy; p.r += .1; cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r); cx.fillStyle = p.c; cx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); cx.restore(); }
+    if (parts.length < 20) burst();
+    requestAnimationFrame(drawCv);
+  }
+  new IntersectionObserver((es) => es.forEach((e) => { confettiOn = e.isIntersecting && !reduce; if (confettiOn) { resizeCv(); burst(); drawCv(); } })).observe(cv);
+
+  // --- throw the chibi! (same idea as the app: drag, throw, bounce, land) -------------------------------------
+  const box = $('#toss'), who = $('#tossChibi'), say = $('#tossSay');
+  let W = 0, H = 0, x = 0, y = 0, vx = 0, vy = 0, drag = false, last = [], raf = 0;
+  const cw = 110, ch = 165;
+  function measure() { W = box.clientWidth; H = box.clientHeight; }
+  function place() { who.style.transform = `translate(${x}px, ${y}px) rotate(${Math.max(-40, Math.min(40, vx * 1.2))}deg)`; }
+  function speak(t) { say.textContent = t; say.style.left = x + cw / 2 + 'px'; say.style.top = y + 'px'; say.classList.add('on'); clearTimeout(speak.t); speak.t = setTimeout(() => say.classList.remove('on'), 1300); }
+  function step() {
+    if (drag) return;
+    vy += 0.9; x += vx; y += vy;
+    const floor = H - ch - 6;
+    if (x < 0) { x = 0; vx = Math.abs(vx) * .6; speak('いてっ'); }
+    if (x > W - cw) { x = W - cw; vx = -Math.abs(vx) * .6; speak('ぶつかった〜'); }
+    if (y < 0) { y = 0; vy = Math.abs(vy) * .5; }
+    if (y > floor) { y = floor; if (Math.abs(vy) > 6) { vy = -vy * .4; vx *= .8; } else { vy = 0; vx *= .85; } }
+    place();
+    if (Math.abs(vx) > .1 || Math.abs(vy) > .1 || y < floor) raf = requestAnimationFrame(step); else speak('ふらふら〜');
+  }
+  measure(); x = W / 2 - cw / 2; y = H - ch - 6; place();
+  addEventListener('resize', () => { measure(); x = Math.min(x, W - cw); y = H - ch - 6; place(); });
+  who.addEventListener('pointerdown', (e) => {
+    drag = true; cancelAnimationFrame(raf); who.setPointerCapture(e.pointerId); measure();
+    const r = box.getBoundingClientRect(); const ox = e.clientX - r.left - x, oy = e.clientY - r.top - y;
+    last = [];
+    speak('わっ！');
+    const move = (ev) => {
+      x = ev.clientX - r.left - ox; y = ev.clientY - r.top - oy;
+      x = Math.max(-20, Math.min(W - cw + 20, x)); y = Math.max(-20, Math.min(H - ch, y));
+      last.push([ev.clientX, ev.clientY, performance.now()]); if (last.length > 5) last.shift();
+      vx = last.length > 1 ? (last.at(-1)[0] - last[0][0]) / Math.max(1, (last.at(-1)[2] - last[0][2])) * 16 : 0;
+      place();
+    };
+    const up = () => {
+      drag = false; who.removeEventListener('pointermove', move); who.removeEventListener('pointerup', up);
+      if (last.length > 1) { const dt = Math.max(1, last.at(-1)[2] - last[0][2]); vx = (last.at(-1)[0] - last[0][0]) / dt * 16; vy = (last.at(-1)[1] - last[0][1]) / dt * 16; }
+      if (Math.hypot(vx, vy) > 14) speak('わーーっ！');
+      raf = requestAnimationFrame(step);
+    };
+    who.addEventListener('pointermove', move); who.addEventListener('pointerup', up);
+  });
+})();
+</script>
+</body>
+</html>

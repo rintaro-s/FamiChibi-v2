@@ -1,0 +1,47 @@
+:root { --font-scale: 1; --bubble-bg: #ffffff; --bubble-fg: #2b2b33; --muted: #6b6b78; }
+:root[data-theme="dark"] { --bubble-bg: #26262e; --bubble-fg: #f4f4f7; --muted: #b3b3c0; }
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: transparent !important;
+  -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent;
+  font-family: "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif; }
+#stage { position: fixed; inset: 0; }
+#stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#stage canvas.fx, #stage canvas.chibi-room { pointer-events: none; }
+.bubbles { position: absolute; inset: 0; pointer-events: none; }
+.bubble { position: absolute; left: 0; top: 0; max-width: var(--bubble-max, min(78vw, 300px)); min-width: 72px; box-sizing: border-box;
+  background: var(--bubble-bg); color: var(--bubble-fg); border-radius: 18px; padding: 8px 12px 10px;
+  border: 2.5px solid var(--accent); box-shadow: 0 4px 14px rgba(0,0,0,.18);
+  font-size: calc(15px * var(--font-scale)); line-height: 1.45; pointer-events: auto;
+  opacity: 0; transition: opacity .2s, scale .25s cubic-bezier(.3,1.6,.5,1); scale: .6; transform-origin: 50% 100%; }
+.bubble.show { opacity: 1; scale: 1; }
+.bubble.sent { opacity: .0; transition: opacity .5s; }
+.bubble .bname { font-size: calc(11.5px * var(--font-scale)); font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 5px; margin-bottom: 2px; }
+.bubble .bname .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.bubble .aibadge { font-size: 10px; background: linear-gradient(90deg,#5ec8ff,#a78bfa); color: #fff; border-radius: 6px; padding: 0 5px; }
+.bubble .badge { font-size: 10px; background: #ff5a5f; color: #fff; border-radius: 8px; padding: 0 6px; margin-left: auto; }
+.bubble .btext { word-break: break-word; overflow-wrap: anywhere; max-height: calc(8.5em * var(--font-scale)); overflow-y: auto; }
+.bubble.urgent { animation: pulse 1s infinite; border-width: 3.5px; }
+.bubble.ai { background: linear-gradient(160deg, var(--bubble-bg) 70%, rgba(143, 211, 255, .25)); }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,90,95,.55);} 50% { box-shadow: 0 0 0 8px rgba(255,90,95,0);} }
+.bubble .tail { position: absolute; bottom: -9px; left: calc(var(--tail, 50%) - 8px); width: 14px; height: 14px; background: var(--bubble-bg);
+  border-right: 2.5px solid var(--accent); border-bottom: 2.5px solid var(--accent); transform: rotate(45deg); border-bottom-right-radius: 4px; }
+.bubble .replies { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.bubble .replies button { font: inherit; font-size: calc(12.5px * var(--font-scale)); border: 1.5px solid var(--accent); color: var(--accent); background: transparent;
+  border-radius: 999px; padding: 3px 10px; }
+.bubble .replies button:active { background: var(--accent); color: #fff; }
+.bubble .voice { font-size: calc(12px * var(--font-scale)); color: var(--muted); margin-top: 3px; }
+.bubble .why { font-size: calc(11.5px * var(--font-scale)); color: var(--muted); margin-top: 5px; }
+.bubble .why summary { cursor: pointer; }
+.bubble .why ul { margin: 3px 0 0; padding-left: 16px; }
+
+.bubble .mini { display: none; }
+.bubble.collapsed { padding: 4px 10px; border-width: 2px; opacity: .92; max-width: min(46vw, 180px); }
+.bubble.collapsed > :not(.mini):not(.tail) { display: none; }
+.bubble.collapsed .mini { display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: calc(12px * var(--font-scale)); }
+.bubble.collapsed .mini .dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.bubble.collapsed .mini b { color: var(--accent); }
+.bubble.collapsed.urgent .mini::after { content: '!'; color: #fff; background: #ff5a5f; border-radius: 50%; width: 14px; height: 14px; font-size: 10px; display: inline-grid; place-items: center; margin-left: 4px; }
+
+.cbadge { position: absolute; left: 0; top: 0; background: #ff5a5f; color: #fff; font-weight: 700; font-size: 12px; border-radius: 999px;
+  padding: 1px 7px; box-shadow: 0 2px 6px rgba(0,0,0,.25); pointer-events: none; animation: bob 1.2s ease-in-out infinite; }
+@keyframes bob { 50% { margin-top: -4px; } }

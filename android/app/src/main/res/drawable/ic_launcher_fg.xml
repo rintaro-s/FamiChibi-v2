@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <!-- house roof -->
+    <path android:fillColor="#E8745A" android:pathData="M54,22 L84,46 L78,46 L78,50 L30,50 L30,46 L24,46 Z"/>
+    <!-- chibi head -->
+    <path android:fillColor="#FFFFFF" android:pathData="M54,36c-12.7,0 -21,8.3 -21,19c0,10.5 8.3,18 21,18s21,-7.5 21,-18C75,44.3 66.7,36 54,36z"/>
+    <path android:fillColor="#5A3A2E" android:pathData="M33.5,52c1,-9 8.8,-15.5 20.5,-15.5S73.5,43 74.5,52c-4,-4.5 -9.5,-7 -13.5,-7.5c-2,2.5 -5,4 -7,4.2c-2,-0.2 -5,-1.7 -7,-4.2C43,45 37.5,47.5 33.5,52z"/>
+    <path android:fillColor="#3B2A25" android:pathData="M46.5,57a3,3.6 0,1 0,6 0a3,3.6 0,1 0,-6 0z"/>
+    <path android:fillColor="#3B2A25" android:pathData="M55.5,57a3,3.6 0,1 0,6 0a3,3.6 0,1 0,-6 0z"/>
+    <path android:fillColor="#FF9DA7" android:pathData="M41,62.5a3.2,2 0,1 0,6.4 0a3.2,2 0,1 0,-6.4 0z"/>
+    <path android:fillColor="#FF9DA7" android:pathData="M60.6,62.5a3.2,2 0,1 0,6.4 0a3.2,2 0,1 0,-6.4 0z"/>
+    <path android:strokeColor="#3B2A25" android:strokeWidth="1.6" android:strokeLineCap="round" android:pathData="M51,64.5q3,2.4 6,0"/>
+    <!-- body -->
+    <path android:fillColor="#E8745A" android:pathData="M43,72h22c2.2,0 4,1.8 4,4v8H39v-8C39,73.8 40.8,72 43,72z"/>
+</vector>

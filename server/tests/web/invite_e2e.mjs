@@ -1,0 +1,18 @@
+import { chromium } from '../../../chibi-stage/node_modules/playwright/index.mjs';
+const BASE = process.argv[2] || 'http://localhost:8765';
+const j = async (p, o = {}) => (await fetch(BASE + p, { ...o, headers: { 'content-type': 'application/json', ...(o.headers || {}) } })).json();
+const reg = await j('/api/register', { method: 'POST', body: JSON.stringify({ name: 'owner' }) });
+const H = { Authorization: 'Bearer ' + reg.token };
+const fam = (await j('/api/families', { method: 'POST', headers: H, body: JSON.stringify({ name: '招待テスト家' }) })).family;
+const inv = await j(`/api/families/${fam.id}/invites`, { method: 'POST', headers: H, body: JSON.stringify({ preset_name: 'よしこ', preset_nickname: '祖母' }) });
+const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const page = await browser.newPage({ viewport: { width: 412, height: 860 } });
+const errs = []; page.on('pageerror', (e) => errs.push(e.message));
+await page.goto(`${BASE}/?invite=${inv.token}`);
+await page.waitForSelector('#invite-banner:not([hidden])');
+console.log('banner:', await page.textContent('#invite-banner'), '| name:', await page.inputValue('#ob-name'));
+await page.click('#ob-go');
+await page.waitForSelector('#view-family:not([hidden])');
+console.log('joined as', await page.evaluate(() => window.__famichibi.S.families[0].me?.nickname), 'url', page.url());
+await browser.close();
+console.log(errs.length ? errs.join('\n') : 'no page errors');

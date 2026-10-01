@@ -1,0 +1,21 @@
+# python
+server/.venv/
+server/data/
+__pycache__/
+.pytest_cache/
+server/out/
+# node
+chibi-stage/node_modules/
+chibi-stage/dist/
+chibi-stage/test/out/
+# android
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+android/local.properties
+*.apk
+.idea/
+.env
+
+spec/
