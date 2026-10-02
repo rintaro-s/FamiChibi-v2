@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>アプリをつなぐ | FamiChibi 使い方マニュアル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="manual.css"></head>
+<body>
+<div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a><a href="index.html" class="">📖 マニュアル</a><a href="server.html" class="">🖥 サーバーの建て方</a><a href="app.html" class="on">📱 アプリをつなぐ</a><a href="avatar.html" class="">🧸 アバター(VRM)</a><a href="daily.html" class="">🏠 毎日の使い方</a></div></div>
+<div class="wrap">
+<div class="head"><div class="crumb">使い方マニュアル 3 / 5</div><h1>アプリをつなぐ</h1><p>アプリを開いてから家族のリビングに入るまで、実機で約1分半。むずかしい入力はほとんどありません。</p><div class="point-bar"><span>🔍 サーバー自動発見</span><span>🧸 3Dでアバター選び</span><span>🔑 招待コード / NFC</span></div></div>
+<section class="step"><div><div class="num">1</div><h2>アプリを開くと、サーバーが見つかる</h2>
+<p>「はじめる」を押すと、同じWi-Fiの家族サーバーと、登録済みのサーバー（例：VPS）を自動で探します。見つかったサーバーをタップするだけ。</p>
+<p>見つからないときは、URL（例：<code>http://192.168.0.40:8010</code>）を入力して「接続する」。</p>
+</div><div><div class="phone"><video src="media/connect.mp4" muted loop playsinline preload="metadata"></video></div></div></section><section class="step"><div><div class="num">2</div><h2>名前とアバターを決める</h2>
+<p>家族のスマホには、このちびっこがあなたの言葉を届けに行きます。名前の下のボタンでアバターを切り替えると、上の3Dプレビューがすぐ変わります。</p>
+<p>誕生日（任意）を入れておくと、当日0時に家族のちびっこが集まってお祝いします。</p>
+<p>👉 くわしくは <a href="avatar.html">アバター(VRM)</a></p>
+</div><div><div class="phone"><video src="media/avatar.mp4" muted loop playsinline preload="metadata"></video></div></div></section><section class="step"><div><div class="num">3</div><h2>家族サーバーに参加する</h2>
+<ul>
+<li><b>招待コード</b>：家族に教えてもらった6文字のコードを入力（全角・小文字でもOK）。</li>
+<li><b>QRコード / NFCカード</b>：家族の「家族」タブで招待を作り、QRを読む・カードをかざすだけで参加。<b>名前入りのカード</b>なら、おじいちゃん・おばあちゃんは入力ゼロ。</li>
+<li>はじめての家族は「新しく作る」、試すだけなら「デモ家族」。</li>
+</ul>
+</div><div><div class="phone"><video src="media/join.mp4" muted loop playsinline preload="metadata"></video></div></div></section><section class="step"><div><div class="num">4</div><h2>権限を許可して、リビングへ</h2>
+<p>「他のアプリの上に表示」を許可すると、ホーム画面にもちびっこが歩いてきます。通知・マイク・歩数は任意です。</p>
+<div class="note">💡 Xiaomi / OPPOなど一部の機種では、設定アプリの「他のアプリの上に表示（ポップアップ表示）」も確認してください。</div>
+</div><div><div class="phone"><video src="media/room-first.mp4" muted loop playsinline preload="metadata"></video></div></div></section>
+<div class="pager"><a href="server.html"><small>← 前へ</small>🖥 サーバーの建て方</a><a class="next" href="avatar.html"><small>次へ →</small>🧸 アバター(VRM)</a></div>
+</div>
+<footer>FamiChibi — Team Daijobu（鳥羽商船高等専門学校）／ 画面はすべて実機（Android 15 / 16）で撮影</footer>
+<script>
+// show steps when scrolled into view; play the clip only while it is visible
+const io = new IntersectionObserver((es) => es.forEach((e) => {
+  if (e.isIntersecting) e.target.classList.add('in');
+  e.target.querySelectorAll('video').forEach((v) => e.isIntersecting ? v.play().catch(() => {}) : v.pause());
+}), { threshold: .25 });
+document.querySelectorAll('.step, .video-box').forEach((s) => io.observe(s));
+</script>
+</body></html>

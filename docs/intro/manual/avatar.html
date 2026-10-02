@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>アバター(VRM) | FamiChibi 使い方マニュアル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="manual.css"></head>
+<body>
+<div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a><a href="index.html" class="">📖 マニュアル</a><a href="server.html" class="">🖥 サーバーの建て方</a><a href="app.html" class="">📱 アプリをつなぐ</a><a href="avatar.html" class="on">🧸 アバター(VRM)</a><a href="daily.html" class="">🏠 毎日の使い方</a></div></div>
+<div class="wrap">
+<div class="head"><div class="crumb">使い方マニュアル 4 / 5</div><h1>アバター(VRM)</h1><p>ちびっこには、メタバースやVTuberで広く使われるVRM形式の3Dアバターを使います。普段使っている自分のアバターも、そのまま家族のもとへ。</p><div class="point-bar"><span>🧸 VRM 0.x / 1.0 対応</span><span>😊 5つの感情表現</span><span>🤸 29のモーション</span></div></div>
+<section class="step"><div><div class="num">1</div><h2>選ぶ・変える</h2>
+<p>はじめに選んだアバターは、あとから <b>設定 → プロフィール</b> でいつでも変えられます。変えた瞬間、家族全員のリビングとホーム画面のちびっこも入れ替わります。</p>
+<p>同梱アバター：ユウ・ミナ・ハル・ソラ・サクラ・アリシア（AIちびっこ）</p>
+</div><div><div class="phone"><img src="media/onboard_26.jpg" alt="アバター選択画面" loading="lazy"></div></div></section><section class="step"><div><div class="num">2</div><h2>自分のVRMを使う</h2>
+<ol>
+<li>アバター一覧の右端「<b>＋ VRMを追加</b>」をタップ</li>
+<li>VRoid Studio などで作った <code>.vrm</code> ファイルを選ぶ（80MBまで）</li>
+<li>家族サーバーにアップロードされ、家族のスマホにも自動で届きます</li>
+</ol>
+<div class="note">💡 スマホで軽く動くよう、表示時にテクスチャを自動で縮小します。作者名・ライセンスはクレジットとして表示されます。</div>
+</div><div><div class="phone"><img src="media/onboard_47.jpg" alt="VRMを追加ボタンのある画面" loading="lazy"></div></div></section><section class="step"><div><div class="num">3</div><h2>気持ちに合わせて動く</h2>
+<p>メッセージの内容から気持ちと急ぎ具合を読みとり、表情・動き・エフェクトを自動で選びます。</p>
+<ul>
+<li>「ありがとう🙏」→ おじぎ　「大好き❤」→ 両手で手を振る　「迎えに来て」→ 窓をノック</li>
+<li>話している間は口が動き、目線はスマホを見ている人の方へ</li>
+<li>家族ごとに声の高さが違う読み上げ（設定で変更可）</li>
+</ul>
+</div><div><div class="phone"><video src="media/arrive.mp4" muted loop playsinline preload="metadata"></video></div></div></section><section class="step"><div><div class="num">4</div><h2>つかんで投げる</h2>
+<p>ホーム画面のちびっこは指でつかんで動かせます。勢いよく投げると跳ねて着地し、画面の外まで投げると…すねて、あとで端からのぞきにきます。</p>
+<p>表示の大きさ・常駐するかどうかは <b>設定 → ちびっこ</b> で変えられます。</p>
+</div><div><div class="media-wide"><img src="../img/home-arrive.jpg" alt="ホーム画面のちびっこ"></div></div></section>
+<div class="pager"><a href="app.html"><small>← 前へ</small>📱 アプリをつなぐ</a><a class="next" href="daily.html"><small>次へ →</small>🏠 毎日の使い方</a></div>
+</div>
+<footer>FamiChibi — Team Daijobu（鳥羽商船高等専門学校）／ 画面はすべて実機（Android 15 / 16）で撮影</footer>
+<script>
+// show steps when scrolled into view; play the clip only while it is visible
+const io = new IntersectionObserver((es) => es.forEach((e) => {
+  if (e.isIntersecting) e.target.classList.add('in');
+  e.target.querySelectorAll('video').forEach((v) => e.isIntersecting ? v.play().catch(() => {}) : v.pause());
+}), { threshold: .25 });
+document.querySelectorAll('.step, .video-box').forEach((s) => io.observe(s));
+</script>
+</body></html>

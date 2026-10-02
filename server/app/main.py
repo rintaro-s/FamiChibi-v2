@@ -353,7 +353,8 @@ class DeviceIn(BaseModel):
 def info(request: Request):
     port = MAIN_LOOP.get("port", 8000)
     return {"app": "famichibi", "name": db.kv_get("host_name", socket.gethostname()), "version": VERSION,
-            "url": public_base(request), "lan_urls": [f"http://{ip}:{port}" for ip in lan_ips()], "families": db.one("SELECT COUNT(*) AS n FROM families")["n"], "time": time.time()}
+            "url": public_base(request), "lan_urls": [f"http://{ip}:{port}" for ip in lan_ips()],
+            "public_urls": [u.strip() for u in os.environ.get("FAMICHIBI_PUBLIC_URLS", "").split(",") if u.strip()], "families": db.one("SELECT COUNT(*) AS n FROM families")["n"], "time": time.time()}
 
 
 def create_user(name: str, avatar: str = "", color: str = "", birthday: str = "", virtual: bool = False) -> dict:

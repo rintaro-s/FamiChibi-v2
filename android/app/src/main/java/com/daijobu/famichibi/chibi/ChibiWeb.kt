@@ -38,7 +38,12 @@ class ChibiWeb(context: Context, private val query: String = "") : WebView(conte
     var ready = false
         private set
     var onEvent: ((JsonObject) -> Unit)? = null
+    /** Which cast (members + avatars) is already on this stage; lets cached stages skip re-setup. */
+    var castKey: String? = null
+    /** The composable instance currently showing this (cached) stage; only it may park it. */
+    var owner: Any? = null
     private val loaded = HashSet<String>()
+    private val sources = HashMap<String, String>() // id -> avatar url last requested
 
     private val loader = WebViewAssetLoader.Builder()
         .setDomain(DOMAIN)
@@ -98,8 +103,12 @@ class ChibiWeb(context: Context, private val query: String = "") : WebView(conte
     private fun q(s: String?) = if (s == null) "null" else JSONObject.quote(s)
 
     fun isLoaded(id: String) = id in loaded
+    /** Loaded *with this avatar* (an avatar change means it must be swapped). */
+    fun isLoaded(id: String, url: String) = id in loaded && sources[id] == url
 
     fun add(id: String, url: String, name: String, color: String, ai: Boolean = false, x: Float? = null) {
+        if (sources[id] != url) loaded.remove(id)
+        sources[id] = url
         val opts = JSONObject().put("name", name).put("color", color).put("ai", ai)
         if (x != null) opts.put("x", x.toDouble())
         js("Chibi.add(${q(id)}, ${q(url)}, $opts)")
@@ -114,8 +123,8 @@ class ChibiWeb(context: Context, private val query: String = "") : WebView(conte
     }
     fun lights(on: Boolean) = js("Chibi.lights($on)")
 
-    fun remove(id: String) { loaded.remove(id); js("Chibi.remove(${q(id)})") }
-    fun clear() { loaded.clear(); js("Chibi.clear()") }
+    fun remove(id: String) { loaded.remove(id); sources.remove(id); js("Chibi.remove(${q(id)})") }
+    fun clear() { loaded.clear(); sources.clear(); js("Chibi.clear()") }
     fun play(id: String, motion: String, restart: Boolean = true) = js("Chibi.play(${q(id)}, ${q(motion)}, {restart:$restart})")
     fun walk(id: String, dir: Int) = js("Chibi.walk(${q(id)}, $dir)")
     fun emotion(id: String, e: String) = js("Chibi.emotion(${q(id)}, ${q(e)})")

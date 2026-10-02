@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -72,48 +76,71 @@ fun FamilyScreen(familyId: String, initialChannel: String?, back: () -> Unit, op
         }
     }
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding()) {
-        // header + living room
-        Box(
-            Modifier.fillMaxWidth().background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.background)))
-                .statusBarsPadding().animateContentSize()
+    val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+
+    val header: @Composable () -> Unit = {
+        Box(Modifier.fillMaxWidth()) {
+            IconButton(onClick = back, modifier = Modifier.align(Alignment.CenterStart)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "戻る") }
+            Column(Modifier.align(Alignment.Center).padding(horizontal = 96.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("${fam.emoji} ${fam.name}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1)
+                PresenceStrip(fam)
+            }
+            androidx.compose.foundation.layout.Row(Modifier.align(Alignment.CenterEnd)) {
+                SilentButton()
+                if (!landscape) IconButton(onClick = { roomOpen = !roomOpen }) {
+                    Icon(if (roomOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore, "リビング")
+                }
+            }
+        }
+    }
+    val room: @Composable (Modifier) -> Unit = { m -> LivingRoom(ref, m, onReply = onStageReply, onTapActor = { tapped = it }) }
+    val content: @Composable (Modifier) -> Unit = { m ->
+        Column(m) {
+            PrimaryScrollableTabRow(selectedTabIndex = tab, edgePadding = 8.dp, containerColor = MaterialTheme.colorScheme.background) {
+                FamilyTabs.forEachIndexed { i, t ->
+                    Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t, fontWeight = if (tab == i) FontWeight.Bold else FontWeight.Normal) })
+                }
+            }
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                when (tab) {
+                    0 -> ChatTab(ref, channelId, onChannel = { channelId = it }, openVoice = openVoice)
+                    1 -> MemoTab(ref)
+                    2 -> CalendarTab(ref)
+                    3 -> TasksTab(ref)
+                    4 -> HomeIotTab(ref) { cmd -> tab = 0; channelId = fam.aiChannel?.id ?: channelId; Graph.scope.launch { runCatching { ref.session.sendMessage(channelId, cmd) } } }
+                    else -> FamilyTab(ref)
+                }
+            }
+        }
+    }
+    tapped?.let { id -> MemberCard(ref, id, onDismiss = { tapped = null }) }
+    val bg = Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.background))
+
+    if (landscape) {
+        // Landscape: living room on the left (full height), conversation on the right.
+        androidx.compose.foundation.layout.Row(
+            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
+                .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing.only(
+                    androidx.compose.foundation.layout.WindowInsetsSides.Horizontal + androidx.compose.foundation.layout.WindowInsetsSides.Top))
         ) {
-            Column {
-                Box(Modifier.fillMaxWidth()) {
-                    IconButton(onClick = back, modifier = Modifier.align(Alignment.CenterStart)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "戻る") }
-                    Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("${fam.emoji} ${fam.name}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                        PresenceStrip(fam)
-                    }
-                    androidx.compose.foundation.layout.Row(Modifier.align(Alignment.CenterEnd)) {
-                        SilentButton()
-                        IconButton(onClick = { roomOpen = !roomOpen }) {
-                            Icon(if (roomOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore, "リビング")
-                        }
-                    }
-                }
-                // The living room folds away while typing so the chat keeps its space.
+            Column(Modifier.weight(0.46f).fillMaxHeight().background(bg)) {
+                header()
                 SilentBanner(Modifier.padding(horizontal = 12.dp, vertical = 2.dp))
-                if (roomOpen && !imeVisible) {
-                    LivingRoom(ref, Modifier.fillMaxWidth().height(250.dp), onReply = onStageReply, onTapActor = { tapped = it })
+                room(Modifier.fillMaxWidth().weight(1f))
+            }
+            content(Modifier.weight(0.54f).fillMaxHeight().imePadding())
+        }
+    } else {
+        Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).imePadding()) {
+            Box(Modifier.fillMaxWidth().background(bg).statusBarsPadding().animateContentSize()) {
+                Column {
+                    header()
+                    SilentBanner(Modifier.padding(horizontal = 12.dp, vertical = 2.dp))
+                    // The living room folds away while typing so the chat keeps its space (the stage stays loaded).
+                    if (roomOpen && !imeVisible) room(Modifier.fillMaxWidth().height(250.dp))
                 }
             }
-        }
-        PrimaryScrollableTabRow(selectedTabIndex = tab, edgePadding = 8.dp, containerColor = MaterialTheme.colorScheme.background) {
-            FamilyTabs.forEachIndexed { i, t ->
-                Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t, fontWeight = if (tab == i) FontWeight.Bold else FontWeight.Normal) })
-            }
-        }
-        tapped?.let { id -> MemberCard(ref, id, onDismiss = { tapped = null }) }
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            when (tab) {
-                0 -> ChatTab(ref, channelId, onChannel = { channelId = it }, openVoice = openVoice)
-                1 -> MemoTab(ref)
-                2 -> CalendarTab(ref)
-                3 -> TasksTab(ref)
-                4 -> HomeIotTab(ref) { cmd -> tab = 0; channelId = fam.aiChannel?.id ?: channelId; Graph.scope.launch { runCatching { ref.session.sendMessage(channelId, cmd) } } }
-                else -> FamilyTab(ref)
-            }
+            content(Modifier.weight(1f).fillMaxWidth())
         }
     }
 }

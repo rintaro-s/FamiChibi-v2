@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>使い方マニュアル | FamiChibi 使い方マニュアル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="manual.css"></head>
+<body>
+<div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a><a href="index.html" class="on">📖 マニュアル</a><a href="server.html" class="">🖥 サーバーの建て方</a><a href="app.html" class="">📱 アプリをつなぐ</a><a href="avatar.html" class="">🧸 アバター(VRM)</a><a href="daily.html" class="">🏠 毎日の使い方</a></div></div>
+<div class="wrap">
+<div class="head"><div class="crumb">使い方マニュアル 1 / 5</div><h1>使い方マニュアル</h1><p>FamiChibiは「家族サーバー」と「アプリ」の2つでできています。サーバーを1台立てて、家族のスマホからつなぐだけ。</p><div class="point-bar"><span>⏱ はじめるまで 約5分</span><span>📱 Android 10以上</span><span>🖥 PC・ラズパイ・VPS</span></div></div>
+
+<div class="video-box"><video src="media/famichibi-demo.mp4" controls muted playsinline preload="metadata" poster="media/demo-poster.jpg"></video></div>
+<div class="flow"><span>🖥 サーバーを立てる</span><i>→</i><span>📱 アプリでつなぐ</span><i>→</i><span>🧸 アバターを選ぶ</span><i>→</i><span>🏠 家族のリビングへ</span></div>
+<div class="cards">
+  <a class="card" href="server.html"><span class="ic">🖥</span><h3>1. サーバーの建て方</h3><p>PC・ラズパイ・VPSでコマンド1つ。外から使うときのポート開放も。</p><span class="go">読む →</span></a>
+  <a class="card" href="app.html"><span class="ic">📱</span><h3>2. アプリをつなぐ</h3><p>サーバーは自動で見つかります。招待コードかNFCカードで家族に参加。</p><span class="go">読む →</span></a>
+  <a class="card" href="avatar.html"><span class="ic">🧸</span><h3>3. アバター(VRM)</h3><p>3Dで選ぶ・自分のVRMを使う・つかんで投げる。</p><span class="go">読む →</span></a>
+  <a class="card" href="daily.html"><span class="ic">🏠</span><h3>4. 毎日の使い方</h3><p>ちびっこが届ける連絡、けはい、見守り、AI、サイレント。</p><span class="go">読む →</span></a>
+</div>
+<section class="step wide"><div><h2>FamiChibiの3つのポイント</h2>
+<ol>
+<li><b>連絡は、送った本人の“ちびっこ”が歩いて届ける</b> — 吹き出し・表情・声で、誰からの連絡かひと目でわかる。急ぎは見逃させない。</li>
+<li><b>家族の「けはい」が見えるリビング</b> — 帰宅・外出・睡眠を、本人の操作なしで。カメラも位置情報も使わない見守り。</li>
+<li><b>AIは「なぜ？」を話す</b> — 家電操作・予定確認・代わりに聞く。判断根拠をいつでも表示。</li>
+</ol></div></section>
+
+<div class="pager"><a href="../index.html"><small>← 戻る</small>🏠 紹介ページ</a><a class="next" href="server.html"><small>次へ →</small>🖥 サーバーの建て方</a></div>
+</div>
+<footer>FamiChibi — Team Daijobu（鳥羽商船高等専門学校）／ 画面はすべて実機（Android 15 / 16）で撮影</footer>
+<script>
+// show steps when scrolled into view; play the clip only while it is visible
+const io = new IntersectionObserver((es) => es.forEach((e) => {
+  if (e.isIntersecting) e.target.classList.add('in');
+  e.target.querySelectorAll('video').forEach((v) => e.isIntersecting ? v.play().catch(() => {}) : v.pause());
+}), { threshold: .25 });
+document.querySelectorAll('.step, .video-box').forEach((s) => io.observe(s));
+</script>
+</body></html>

@@ -25,6 +25,7 @@ After=network-online.target
 User=$USER
 WorkingDirectory=$HOME/famichibi/server
 Environment=FAMICHIBI_DATA=$HOME/famichibi/data
+Environment=FAMICHIBI_PUBLIC_URLS=http://133.242.50.151:8010
 ExecStart=$HOME/famichibi/server/.venv/bin/python -m app.main --port 8010 --name "FamiChibi VPS"
 Restart=always
 [Install]

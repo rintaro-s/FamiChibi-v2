@@ -437,6 +437,7 @@ footer .parade .sprite { position: absolute; bottom: 0; width: 100px; height: 15
   <a class="link opt" href="#ai">AI</a>
   <a class="link opt" href="#review">審査コメント</a>
   <a class="link opt" href="#tech">しくみ</a>
+  <a class="link" href="manual/index.html" style="background:var(--peach);color:#fff">📖 使い方</a>
 </div></nav>
 
 <!-- =================================================================== HERO -->
@@ -457,6 +458,7 @@ footer .parade .sprite { position: absolute; bottom: 0; width: 100px; height: 15
       <div class="cta rv d3">
         <a class="btn" href="#scenes">4つの場面を見る →</a>
         <a class="btn ghost" href="#concept">🏠 リビングをのぞく</a>
+        <a class="btn ghost" href="manual/index.html">📖 使い方マニュアル</a>
       </div>
     </div>
     <div class="hero-stage rv zoom d2">
@@ -730,10 +732,25 @@ footer .parade .sprite { position: absolute; bottom: 0; width: 100px; height: 15
       <span>Kotlin</span><span>Jetpack Compose</span><span>three.js</span><span>@pixiv/three-vrm</span><span>WebView</span><span>WebRTC</span><span>Python</span><span>FastAPI</span><span>SQLite FTS5</span><span>MCP</span><span>Ollama</span><span>Home Assistant</span><span>NFC</span>
     </div>
     <div class="browser rv zoom">
-      <div class="bar"><i></i><i></i><i></i><span>http://家族サーバー:8000</span></div>
+      <div class="bar"><i></i><i></i><i></i><span>http://家族サーバー:8010</span></div>
       <img src="img/web-desktop.jpg" alt="Webクライアント">
     </div>
     <p class="center rv" style="margin-top:14px;color:#d9ccc6;font-size:14px">パソコンのブラウザからも、同じリビングに参加できます。</p>
+  </div>
+</section>
+
+<!-- =================================================================== HOWTO -->
+<section id="howto" style="padding-top:70px">
+  <div class="wrap">
+    <h2 class="center rv" style="font-size:clamp(26px,4.5vw,38px);margin:0 0 10px">2分でわかる FamiChibi</h2>
+    <p class="center rv d1" style="color:var(--muted);margin:0 0 26px">サーバーを立てるところから、2台のスマホでのやりとりまで。すべて実機の画面です。</p>
+    <div class="rv d2" style="border-radius:24px;overflow:hidden;box-shadow:0 24px 60px rgba(160,90,60,.2);background:#000;max-width:900px;margin:0 auto">
+      <video src="manual/media/famichibi-demo.mp4" poster="manual/media/demo-poster.jpg" controls muted playsinline preload="none" style="width:100%;display:block"></video>
+    </div>
+    <div class="center rv d3" style="margin-top:28px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a class="btn" href="manual/index.html">📖 使い方マニュアルを見る</a>
+      <a class="btn ghost" href="manual/server.html">🖥 サーバーの建て方</a>
+    </div>
   </div>
 </section>
 

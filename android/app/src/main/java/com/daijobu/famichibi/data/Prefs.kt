@@ -15,6 +15,7 @@ data class HostAccount(
     val userId: String,
     val userName: String,
     val hostName: String = "",
+    val alts: List<String> = emptyList(),   // other URLs of the same server (public / LAN), used for failover
 )
 
 @Serializable
@@ -54,7 +55,7 @@ class Prefs(context: Context) {
     private inline fun <reified T> save(key: String, v: T) = sp.edit().putString(key, JsonCfg.encodeToString(v)).apply()
 
     fun upsertAccount(a: HostAccount) {
-        val list = _accounts.value.filterNot { it.url == a.url } + a
+        val list = _accounts.value.filterNot { it.url == a.url || it.token == a.token } + a
         _accounts.value = list
         save("accounts", list)
     }

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>サーバーの建て方 | FamiChibi 使い方マニュアル</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="manual.css"></head>
+<body>
+<div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a><a href="index.html" class="">📖 マニュアル</a><a href="server.html" class="on">🖥 サーバーの建て方</a><a href="app.html" class="">📱 アプリをつなぐ</a><a href="avatar.html" class="">🧸 アバター(VRM)</a><a href="daily.html" class="">🏠 毎日の使い方</a></div></div>
+<div class="wrap">
+<div class="head"><div class="crumb">使い方マニュアル 2 / 5</div><h1>サーバーの建て方</h1><p>家族のメッセージや予定は、自分たちで動かす「家族サーバー」に保存します。Python 3.11以上が入ったPC・Raspberry Pi・VPSならどれでも動きます。</p><div class="point-bar"><span>🐍 Python 3.11+</span><span>⌨ コマンド1つ</span><span>🔒 データは家族の手元に</span></div></div>
+<section class="step wide"><div><div class="num">1</div><h2>ダウンロードして起動</h2>
+<p>サーバー用のフォルダで <code>run.sh</code> を実行するだけです。初回は必要なライブラリを自動でインストールします。</p>
+<pre><code><span class="c"># 作品フォルダの server/ に移動して</span>
+cd famichibi/server
+./run.sh --port 8010 --name "わが家のサーバー"</code></pre>
+<p>Windowsの場合は <code>python -m venv .venv</code> → <code>.venv\Scripts\pip install -r requirements.txt</code> → <code>.venv\Scripts\python -m app.main --port 8010</code>。</p>
+<div class="note">💡 同じWi-Fiのスマホは、アプリを開くだけでこのサーバーを<b>自動で見つけます</b>（UDP 47810番でお知らせ）。</div>
+</div><div class="media-wide"><img src="media/server-terminal.png" alt="サーバーを起動したときの画面"></div></section><section class="step wide"><div><div class="num">2</div><h2>ずっと動かしておく（ラズパイ・VPS）</h2>
+<p>電源を入れたら自動で起動するよう、systemdに登録します（Linux）。</p>
+<pre><code><span class="c"># /etc/systemd/system/famichibi.service</span>
+[Service]
+WorkingDirectory=/home/pi/famichibi/server
+Environment=FAMICHIBI_DATA=/home/pi/famichibi/data
+Environment=FAMICHIBI_PUBLIC_URLS=http://（外から見たアドレス）:8010
+ExecStart=/home/pi/famichibi/server/.venv/bin/python -m app.main --port 8010
+Restart=always
+[Install]
+WantedBy=multi-user.target</code></pre>
+<pre><code>sudo systemctl enable --now famichibi</code></pre>
+<p>VPSなら付属の <code>tools/deploy_vps.sh ユーザー@アドレス</code> で、コピー・インストール・自動起動までまとめて行えます。</p>
+</div></section><section class="step wide"><div><div class="num">3</div><h2>家の外からも使う（ポート開放）</h2>
+<ul>
+<li><b>VPS</b>：ファイアウォールでTCP 8010番を開けます（例：<code>sudo ufw allow 8010/tcp</code>）。</li>
+<li><b>家のPC・ラズパイ</b>：ルーターでTCP 8010番をサーバーへ転送します。転送できない回線では、VPSにサーバーを置くのがおすすめです。</li>
+<li><code>FAMICHIBI_PUBLIC_URLS</code> に外から見たアドレスを書いておくと、アプリが<b>家のWi-Fi ⇄ 外</b>でつなぎ先を自動で切り替えます。</li>
+</ul>
+<div class="warn">⚠ 学校や会社のWi-Fiでは、8010番などの番号への通信が止められていることがあります。その場合はモバイル回線か家のWi-Fiでお試しください。</div>
+</div></section><section class="step wide"><div><div class="num">4</div><h2>AI・家電はあとから（任意）</h2>
+<ul>
+<li><b>AIちびっこ</b>：LLMがなくてもルールエンジンで動きます。雑談も楽しみたい場合は <a href="https://ollama.com/">Ollama</a> を入れて <code>ollama pull qwen3.5:9b</code>。アプリの「家族」タブ → AIちびっこ設定でURLとモデルを指定します。</li>
+<li><b>家電（Home Assistant）</b>：同じ設定画面の「MCPサーバー」に ha-mcp のURLを追加します。最初は家電が入った<b>仮想の家</b>で試せます。</li>
+</ul>
+</div></section>
+<div class="pager"><a href="index.html"><small>← 前へ</small>📖 マニュアル</a><a class="next" href="app.html"><small>次へ →</small>📱 アプリをつなぐ</a></div>
+</div>
+<footer>FamiChibi — Team Daijobu（鳥羽商船高等専門学校）／ 画面はすべて実機（Android 15 / 16）で撮影</footer>
+<script>
+// show steps when scrolled into view; play the clip only while it is visible
+const io = new IntersectionObserver((es) => es.forEach((e) => {
+  if (e.isIntersecting) e.target.classList.add('in');
+  e.target.querySelectorAll('video').forEach((v) => e.isIntersecting ? v.play().catch(() => {}) : v.pause());
+}), { threshold: .25 });
+document.querySelectorAll('.step, .video-box').forEach((s) => io.observe(s));
+</script>
+</body></html>

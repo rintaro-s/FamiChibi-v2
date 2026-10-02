@@ -51,14 +51,28 @@ class StageState {
 
 /** Embeds the 3D chibi stage (transparent WebView) in Compose. */
 @Composable
-fun ChibiStage(state: StageState, query: String, modifier: Modifier = Modifier) {
+fun ChibiStage(state: StageState, query: String, modifier: Modifier = Modifier, cacheKey: String? = null) {
     val ctx = LocalContext.current
-    val web = remember(query) { ChibiWeb(ctx, query).also { w -> w.onEvent = { state.events.tryEmit(it) } } }
-    DisposableEffect(web) {
-        state.web = web
-        onDispose { state.web = null; web.destroy() }
+    val web = remember(query, cacheKey) {
+        if (cacheKey != null) com.daijobu.famichibi.chibi.StageCache.obtain(cacheKey, query) else ChibiWeb(ctx, query)
     }
-    AndroidView(factory = { web }, modifier = modifier)
+    val token = remember { Any() }
+    DisposableEffect(web) {
+        web.owner = token
+        web.onEvent = { state.events.tryEmit(it) }
+        web.pause(false)
+        state.web = web
+        onDispose {
+            state.web = null
+            // When the layout changes (rotation), the new owner may already hold the stage: leave it alone.
+            if (web.owner === token) {
+                web.onEvent = null
+                web.owner = null
+                if (cacheKey != null) com.daijobu.famichibi.chibi.StageCache.park(web) else web.destroy()
+            }
+        }
+    }
+    AndroidView(factory = { (web.parent as? android.view.ViewGroup)?.removeView(web); web.owner = token; web.pause(false); web }, modifier = modifier)
 }
 
 /**
@@ -71,20 +85,24 @@ fun LivingRoom(ref: FamRef, modifier: Modifier = Modifier, onReply: (ChibiCue, S
     val fam = ref.family
     val settings = Graph.prefs.settings.value
     Box(modifier) {
-        ChibiStage(state, "layout=room&tex=512&fraction=0.58&fps=30&font=${settings.fontScale}", Modifier.fillMaxSize())
+        ChibiStage(state, "layout=room&tex=512&fraction=0.58&fps=30&font=${settings.fontScale}", Modifier.fillMaxSize(), cacheKey = "room:${fam.id}")
     }
     val memberKey = fam.members.joinToString { it.user_id + it.avatar } + fam.ai_avatar + fam.ai_enabled
     LaunchedEffect(state.web, memberKey) {
         val web = state.web ?: return@LaunchedEffect
+        if (web.castKey == memberKey) return@LaunchedEffect // cached stage: everyone is already there
         val actors = fam.members.mapNotNull { ChibiService.actorFor(fam.id, it.user_id) } +
             listOfNotNull(if (fam.ai_enabled) ChibiService.actorFor(fam.id, "ai") else null)
         web.room(actors.size)
+        // members who left the family (or changed id) disappear from a cached stage too
+        web.js("(()=>{const keep=${org.json.JSONArray(actors.map { it.id })};for(const id of Chibi.ids()) if(!keep.includes(id)) Chibi.remove(id);})()")
         // presence first, so members who are out never appear in the room
         applyPresence(web, Graph.famRef(fam.id)?.family ?: fam, animate = false)
         coroutineScope {
             actors.map { a -> async { a to a.avatarUrl?.let { Graph.avatars.ensure(it) } } }.awaitAll()
         }.forEach { (a, local) -> if (local != null) web.add(a.id, local, a.name, a.color, a.ai) }
         web.arrangeRow(actors.map { it.id })
+        web.castKey = memberKey
     }
     // Presence changes (asleep, moving, ...) and the real living-room light (IoT) are reflected in the room.
     val presenceKey = fam.members.joinToString { it.user_id + it.presence.state + it.presence.at_home + it.presence.label }

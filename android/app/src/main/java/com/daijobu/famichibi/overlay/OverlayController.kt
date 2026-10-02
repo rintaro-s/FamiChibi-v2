@@ -269,9 +269,9 @@ class OverlayController(private val ctx: Context, private val cb: Handler) {
     private suspend fun loadActor(a: ActorInfo): Boolean {
         val w = web ?: return false
         actors[a.id] = a
-        if (w.isLoaded(a.id)) return true
         val url = a.avatarUrl ?: return false
         val local = Graph.avatars.ensure(url) ?: return false
+        if (w.isLoaded(a.id, local)) return true
         val waiter = CompletableDeferred<Boolean>()
         loadWaiters[a.id] = waiter
         w.add(a.id, local, a.name, a.color, a.ai)

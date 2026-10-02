@@ -30,8 +30,11 @@ import kotlin.math.min
  * One logged-in account on one host: REST client + a self-healing WebSocket + in-memory state.
  * Everything UI/overlay related observes the StateFlows / the [events] stream.
  */
-class HostSession(val account: HostAccount, private val scope: CoroutineScope) {
-    val api = Api(account.url, account.token)
+class HostSession(account0: HostAccount, private val scope: CoroutineScope) {
+    var account: HostAccount = account0
+        private set
+    var api = Api(account0.url, account0.token)
+        private set
     val userId get() = account.userId
 
     private val _connected = MutableStateFlow(false)
@@ -92,6 +95,7 @@ class HostSession(val account: HostAccount, private val scope: CoroutineScope) {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 attempts = 0
                 _connected.value = true
+                scope.launch { learnAlternates() }
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -114,8 +118,45 @@ class HostSession(val account: HostAccount, private val scope: CoroutineScope) {
         reconnectJob?.cancel()
         reconnectJob = scope.launch {
             attempts++
-            delay(min(30_000L, 1000L * (1 shl min(attempts, 5))))
+            // After a couple of failures the address itself may be the problem (USB relay gone, Wi-Fi changed, ...):
+            // look for another address of the same server before waiting longer.
+            if (attempts >= 2 && failover()) attempts = 0
+            delay(if (attempts == 0) 300L else min(15_000L, 1000L * (1 shl min(attempts, 4))))
             connect()
+        }
+    }
+
+    /** Candidate URLs: this account's alternates + the app's default hosts. A candidate is "the same server" when our token is valid there. */
+    private suspend fun failover(): Boolean {
+        val defaults = com.daijobu.famichibi.BuildConfig.DEFAULT_HOSTS.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val candidates = (account.alts + defaults).map { Api.normalizeBase(it) }.distinct().filter { it != api.base }
+        for (url in candidates) {
+            val ok = runCatching { Api(url, account.token).get("/api/me") }.isSuccess
+            if (ok) {
+                Log.i(TAG, "failover ${api.base} -> $url")
+                switchTo(url)
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun switchTo(url: String) {
+        val old = account.url
+        account = account.copy(url = url, alts = (account.alts + old).distinct().filter { it != url })
+        api = Api(url, account.token)
+        com.daijobu.famichibi.Graph.prefs.upsertAccount(account)
+    }
+
+    /** Remember the server's other addresses (from /api/info) so failover works later. */
+    suspend fun learnAlternates() {
+        val info = runCatching { api.get("/api/info") }.getOrNull() ?: return
+        val urls = listOf("public_urls", "lan_urls").flatMap { k -> (info[k] as? JsonArray)?.mapNotNull { it.strOrNull() } ?: emptyList() }
+            .map { Api.normalizeBase(it) }.filter { it != api.base }
+        val merged = (account.alts + urls).distinct()
+        if (merged != account.alts) {
+            account = account.copy(alts = merged)
+            com.daijobu.famichibi.Graph.prefs.upsertAccount(account)
         }
     }
 

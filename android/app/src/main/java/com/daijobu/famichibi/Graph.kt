@@ -71,9 +71,10 @@ object Graph {
     fun syncSessions() {
         val accounts = prefs.accounts.value
         val current = _sessions.value
-        val keep = current.filter { s -> accounts.any { it.url == s.account.url && it.token == s.account.token } }
+        // the token identifies the account; the URL may change (failover), so it is not part of the identity
+        val keep = current.filter { s -> accounts.any { it.token == s.account.token } }
         current.filterNot { it in keep }.forEach { it.stop() }
-        val added = accounts.filter { a -> keep.none { it.account.url == a.url && it.account.token == a.token } }
+        val added = accounts.filter { a -> keep.none { it.account.token == a.token } }
             .map { HostSession(it, scope).also { s -> s.start() } }
         _sessions.value = keep + added
     }
