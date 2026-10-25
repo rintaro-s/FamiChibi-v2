@@ -3,11 +3,11 @@
 <title>サーバーの建て方 | FamiChibi 使い方マニュアル</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="manual.css"></head>
+<link rel="stylesheet" href="manual.css?v=3731e616"></head>
 <body>
-<div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a><a href="index.html" class="">📖 マニュアル</a><a href="server.html" class="on">🖥 サーバーの建て方</a><a href="app.html" class="">📱 アプリをつなぐ</a><a href="avatar.html" class="">🧸 アバター(VRM)</a><a href="daily.html" class="">🏠 毎日の使い方</a></div></div>
+<div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a><a href="index.html" class="">📖 マニュアル</a><a href="server.html" class="on">🖥 サーバーの建て方</a><a href="app.html" class="">📱 アプリをつなぐ</a><a href="avatar.html" class="">🧸 アバター(VRM)</a><a href="daily.html" class="">🏠 毎日の使い方</a><a href="features.html" class="">⚙️ 機能・設定</a></div></div>
 <div class="wrap">
-<div class="head"><div class="crumb">使い方マニュアル 2 / 5</div><h1>サーバーの建て方</h1><p>家族のメッセージや予定は、自分たちで動かす「家族サーバー」に保存します。Python 3.11以上が入ったPC・Raspberry Pi・VPSならどれでも動きます。</p><div class="point-bar"><span>🐍 Python 3.11+</span><span>⌨ コマンド1つ</span><span>🔒 データは家族の手元に</span></div></div>
+<div class="head"><div class="crumb">使い方マニュアル 2 / 6</div><h1>サーバーの建て方</h1><p>家族のメッセージや予定は、自分たちで動かす「家族サーバー」に保存します。Python 3.11以上が入ったPC・Raspberry Pi・VPSならどれでも動きます。</p><div class="point-bar"><span>🐍 Python 3.11+</span><span>⌨ コマンド1つ</span><span>🔒 データは家族の手元に</span></div></div>
 <section class="step wide"><div><div class="num">1</div><h2>ダウンロードして起動</h2>
 <p>サーバー用のフォルダで <code>run.sh</code> を実行するだけです。初回は必要なライブラリを自動でインストールします。</p>
 <pre><code><span class="c"># 作品フォルダの server/ に移動して</span>
@@ -49,7 +49,7 @@ WantedBy=multi-user.target</code></pre>
 const io = new IntersectionObserver((es) => es.forEach((e) => {
   if (e.isIntersecting) e.target.classList.add('in');
   e.target.querySelectorAll('video').forEach((v) => e.isIntersecting ? v.play().catch(() => {}) : v.pause());
-}), { threshold: .25 });
+}), { threshold: 0, rootMargin: '0px 0px -12% 0px' });  // threshold 0: tall sections must still appear
 document.querySelectorAll('.step, .video-box').forEach((s) => io.observe(s));
 </script>
 </body></html>

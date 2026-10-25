@@ -149,57 +149,86 @@ fun qrBitmap(text: String, size: Int = 512): Bitmap {
     return bmp
 }
 
+private val INVITE_EXPIRY = listOf("1時間" to 1.0, "24時間" to 24.0, "7日間" to 168.0, "30日間" to 720.0, "期限なし" to 0.0)
+
 @Composable
 private fun InviteSection(ref: FamRef) {
     val fam = ref.family
     val s = ref.session
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    var link by remember { mutableStateOf<String?>(null) }
+    var invite by remember { mutableStateOf<JsonObject?>(null) }
     var presetName by remember { mutableStateOf("") }
     var presetNick by remember { mutableStateOf("") }
-    val codeLink = "famichibi://join?host=${s.api.base}&code=${fam.code}"
+    var hours by remember { mutableStateOf(168.0) }
+    var busy by remember { mutableStateOf(false) }
+
+    fun create(personal: Boolean, then: (JsonObject) -> Unit = {}) {
+        busy = true
+        scope.launch {
+            runCatching {
+                s.api.post("/api/families/${fam.id}/invites", buildJsonObject {
+                    if (personal) { put("preset_name", presetName.trim()); put("preset_nickname", presetNick.trim()) }
+                    put("expires_hours", hours)
+                })
+            }.onSuccess { invite = it; then(it) }.onFailure { toast(ctx, errText(it)) }
+            busy = false
+        }
+    }
+    fun untilText(inv: JsonObject): String {
+        val exp = (inv["expires_at"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toDoubleOrNull()
+        val t = exp?.let { java.text.SimpleDateFormat("M/d HH:mm", java.util.Locale.JAPAN).format(java.util.Date((it * 1000).toLong())) + " まで有効" } ?: "期限なし"
+        return if (inv.str("single_use") == "true") "$t・1回だけ" else t
+    }
+    fun share(inv: JsonObject) {
+        ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
+            .putExtra(Intent.EXTRA_TEXT, "FamiChibiの「${fam.name}」に招待します！\nリンクを開いて「アプリで参加」か「ブラウザでチャット」を押してね。\n${inv.str("url")}\n（${untilText(inv)}）"), "招待を送る"))
+    }
+
     SectionCard("💌 家族を招待") {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("招待コード", style = MaterialTheme.typography.labelMedium)
-                Text(fam.code, fontFamily = FontFamily.Monospace, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        Text("LINEやメールで送れる招待リンクを作ります。開くと招待ページが表示され、アプリでもブラウザでも参加できます。",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("有効期限", style = MaterialTheme.typography.labelMedium)
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            INVITE_EXPIRY.forEach { (l, h) -> androidx.compose.material3.FilterChip(hours == h, { hours = h }, label = { Text(l) }) }
+        }
+        Button(enabled = !busy, onClick = { create(false) { share(it) } }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Default.Share, null); Text(" 招待リンクを送る")
+        }
+        invite?.let { inv ->
+            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    val url = inv.str("url").orEmpty()
+                    val bmp = remember(url) { qrBitmap(url) }
+                    Image(bmp.asImageBitmap(), "招待QR", Modifier.size(180.dp))
+                    Text(url, style = MaterialTheme.typography.labelSmall, fontFamily = FontFamily.Monospace)
+                    Text(untilText(inv), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { share(inv) }) { Text("送る") }
+                        TextButton(onClick = {
+                            (ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+                                .setPrimaryClip(android.content.ClipData.newPlainText("招待リンク", url)); toast(ctx, "コピーしました")
+                        }) { Text("コピー") }
+                        if (inv.str("single_use") == "true") FilledTonalButton(onClick = {
+                            ctx.startActivity(Intent(ctx, NfcWriteActivity::class.java).putExtra("uri", inv.str("link")).putExtra("label", presetName.ifBlank { fam.name }))
+                        }) { Icon(Icons.Default.Nfc, null); Text(" NFCに書く") }
+                    }
+                }
             }
-            OutlinedButton(onClick = {
-                ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain")
-                    .putExtra(Intent.EXTRA_TEXT, "FamiChibiの「${fam.name}」に参加してね！\nコード: ${fam.code}\n$codeLink"), "招待を送る"))
-            }) { Icon(Icons.Default.Share, null); Text(" 送る") }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("招待コード", style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+            Text(fam.code, fontFamily = FontFamily.Monospace, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }
         HorizontalDivider()
-        Text("おじいちゃん・おばあちゃん用 NFCカード", fontWeight = FontWeight.Bold)
-        Text("名前を入れてカードに書き込むと、カードをスマホにかざすだけでアカウント作成から参加まで完了します（入力ゼロ）。",
+        Text("おじいちゃん・おばあちゃん用（その人専用・NFCカード）", fontWeight = FontWeight.Bold)
+        Text("名前を入れて作ると、その人専用の招待になります（1回だけ使える）。NFCカードに書き込めば、かざすだけでアカウント作成から参加まで完了します。",
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedTextField(presetName, { presetName = it.take(12) }, label = { Text("名前") }, singleLine = true, modifier = Modifier.weight(1f))
             OutlinedTextField(presetNick, { presetNick = it.take(8) }, label = { Text("呼ばれ方") }, singleLine = true, modifier = Modifier.weight(1f))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = {
-                scope.launch {
-                    runCatching {
-                        val r = s.api.post("/api/families/${fam.id}/invites", buildJsonObject { put("preset_name", presetName); put("preset_nickname", presetNick) })
-                        link = r.str("link")
-                    }.onFailure { toast(ctx, errText(it)) }
-                }
-            }) { Text("招待を作る") }
-            if (link != null) FilledTonalButton(onClick = {
-                ctx.startActivity(Intent(ctx, NfcWriteActivity::class.java).putExtra("uri", link).putExtra("label", presetName.ifBlank { fam.name }))
-            }) { Icon(Icons.Default.Nfc, null); Text(" NFCに書く") }
-        }
-        link?.let { l ->
-            Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    val bmp = remember(l) { qrBitmap(l) }
-                    Image(bmp.asImageBitmap(), "招待QR", Modifier.size(200.dp))
-                    Text("QRをカメラで読むか、NFCカードをかざすと参加できます", style = MaterialTheme.typography.labelSmall)
-                }
-            }
-        }
+        OutlinedButton(enabled = !busy && (presetName.isNotBlank() || presetNick.isNotBlank()), onClick = { create(true) }) { Text("専用の招待を作る") }
     }
 }
 

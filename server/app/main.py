@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
+import html
 import io
 import json
 import logging
@@ -20,6 +22,7 @@ import time
 import unicodedata
 import urllib.parse
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -147,6 +150,8 @@ async def scheduler() -> None:
                 await svc.birthday_check()
             if n % 12 == 3:
                 await svc.presence.tick()
+            if n % 720 == 5:  # hourly
+                db.exec("DELETE FROM idempotency WHERE at<?", (now() - IDEMPOTENCY_TTL,))
         except Exception:
             log.exception("scheduler")
         n += 1
@@ -174,6 +179,32 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="FamiChibi Host", version=VERSION, lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+IDEMPOTENCY_TTL = 3 * 86400
+_idem_locks: dict[str, asyncio.Lock] = {}
+
+
+@app.middleware("http")
+async def idempotency(request: Request, call_next):
+    """Offline-queued writes from the apps are retried until they get an answer. A retry carries the same
+    Idempotency-Key, so the first result is replayed instead of creating a second memo/task/event."""
+    key = request.headers.get("idempotency-key", "")
+    if request.method not in ("POST", "PATCH", "DELETE") or not key or len(key) > 100:
+        return await call_next(request)
+    ident = hashlib.sha256(f"{request.headers.get('authorization', '')}|{request.method}|{request.url.path}|{key}".encode()).hexdigest()
+    lock = _idem_locks.setdefault(ident, asyncio.Lock())
+    async with lock:  # a retry that arrives while the first try is still running waits for its result
+        try:
+            hit = db.one("SELECT status, body FROM idempotency WHERE key=?", (ident,))
+            if hit:
+                return Response(hit["body"], status_code=hit["status"], media_type="application/json", headers={"Idempotent-Replay": "true"})
+            res = await call_next(request)
+            body = b"".join([chunk async for chunk in res.body_iterator])
+            if res.status_code < 500:  # server errors may succeed later: let them be retried for real
+                db.exec("INSERT OR REPLACE INTO idempotency(key, status, body, at) VALUES(?,?,?,?)", (ident, res.status_code, body, now()))
+            return Response(body, status_code=res.status_code, headers={k: v for k, v in res.headers.items() if k.lower() != "content-length"})
+        finally:
+            _idem_locks.pop(ident, None)
 
 
 # ---------------------------------------------------------------------------------------------
@@ -329,6 +360,7 @@ class InviteIn(BaseModel):
     preset_name: str = ""
     preset_nickname: str = ""
     preset_avatar: str = ""
+    expires_hours: float = 168  # 0 = no expiry
 
 
 class ClaimIn(BaseModel):
@@ -596,43 +628,109 @@ async def remove_member(fid: str, uid: str, user: dict = Depends(current_user)):
     return {"ok": True}
 
 
-# ----- invites (QR / NFC card with a preset profile) --------------------------------------------
+# ----- invites (share link / QR / NFC card with a preset profile) ------------------------------
+# An invite with a preset profile (name / nickname) is for one person and works once; a plain one
+# can be shared in a group chat and works for anyone until it expires.
+def invite_links(base: str, tok: str) -> dict:
+    app_link = f"famichibi://join?host={base}&invite={tok}"
+    return {"url": f"{base}/join/{tok}", "web": f"{base}/join/{tok}", "link": app_link,
+            "qr": f"/api/qr?data={urllib.parse.quote(f'{base}/join/{tok}', safe='')}"}
+
+
+def invite_problem(inv: dict | None) -> str | None:
+    if not inv or not db.family(inv["family_id"]):
+        return "この招待は見つかりませんでした"
+    if inv["expires_at"] and inv["expires_at"] < now():
+        return "この招待は期限切れです。家族に新しい招待をもらってください"
+    if inv["used_by"]:
+        return "この招待はもう使われています"
+    return None
+
+
+def load_invite(tok: str) -> dict:
+    inv = db.one("SELECT * FROM invites WHERE token=?", (tok,))
+    problem = invite_problem(inv)
+    if problem:
+        raise HTTPException(404 if not inv else 410, problem)
+    return inv
+
+
 @app.post("/api/families/{fid}/invites")
 def create_invite(fid: str, body: InviteIn, request: Request, user: dict = Depends(current_user)):
     fam, _ = require_member(fid, user)
     tok = secrets.token_urlsafe(10)
+    hours = max(0.0, min(body.expires_hours, 24 * 365))
+    expires = now() + hours * 3600 if hours else None
     db.insert("invites", {"token": tok, "family_id": fid, "preset_name": body.preset_name, "preset_nickname": body.preset_nickname,
-                          "preset_avatar": body.preset_avatar, "created_by": user["id"], "created_at": now()})
+                          "preset_avatar": body.preset_avatar, "created_by": user["id"], "created_at": now(), "expires_at": expires})
     base = public_base(request)
-    link = f"famichibi://join?host={base}&invite={tok}"
-    return {"token": tok, "link": link, "web": f"{base}/join/{tok}", "qr": f"/api/qr?data={urllib.parse.quote(link, safe='')}", "code": fam["code"],
-            "code_link": f"famichibi://join?host={base}&code={fam['code']}"}
+    return {"token": tok, **invite_links(base, tok), "expires_at": expires, "single_use": bool(body.preset_name or body.preset_nickname),
+            "code": fam["code"], "code_link": f"famichibi://join?host={base}&code={fam['code']}"}
+
+
+@app.get("/api/families/{fid}/invites")
+def list_invites(fid: str, request: Request, user: dict = Depends(current_user)):
+    require_member(fid, user)
+    base = public_base(request)
+    rows = db.all("SELECT * FROM invites WHERE family_id=? AND used_by IS NULL AND (expires_at IS NULL OR expires_at>?) ORDER BY created_at DESC",
+                  (fid, now()))
+    return {"invites": [{"token": r["token"], "preset_name": r["preset_name"], "expires_at": r["expires_at"], "uses": r["uses"],
+                         **invite_links(base, r["token"])} for r in rows]}
+
+
+@app.delete("/api/families/{fid}/invites/{tok}")
+def revoke_invite(fid: str, tok: str, user: dict = Depends(current_user)):
+    require_member(fid, user)
+    db.exec("DELETE FROM invites WHERE token=? AND family_id=?", (tok, fid))
+    return {"ok": True}
 
 
 @app.get("/api/invites/{tok}")
 def invite_info(tok: str):
-    inv = db.one("SELECT * FROM invites WHERE token=?", (tok,))
-    if not inv or inv["used_by"]:
-        raise HTTPException(404, "この招待は使えません")
+    inv = load_invite(tok)
     fam = db.family(inv["family_id"])
     return {"family": {"id": fam["id"], "name": fam["name"], "emoji": fam["emoji"]}, "preset_name": inv["preset_name"],
-            "preset_nickname": inv["preset_nickname"], "preset_avatar": inv["preset_avatar"]}
+            "preset_nickname": inv["preset_nickname"], "preset_avatar": inv["preset_avatar"], "expires_at": inv["expires_at"]}
 
 
 @app.post("/api/invites/{tok}/claim")
 async def claim_invite(tok: str, body: ClaimIn, authorization: str = Header(default="")):
     """Join with one tap. If the caller has no account yet (e.g. grandma tapping an NFC card), one is created."""
-    inv = db.one("SELECT * FROM invites WHERE token=?", (tok,))
-    if not inv or inv["used_by"]:
-        raise HTTPException(404, "この招待は使えません")
+    inv = load_invite(tok)
     user = db.user_by_token(authorization[7:]) if authorization.lower().startswith("bearer ") else None
     if not user:
         user = create_user(body.name or inv["preset_name"] or "家族", inv["preset_avatar"] or unused_avatar(inv["family_id"]))
     fam = db.family(inv["family_id"])
     await join_family(fam, user, inv["preset_nickname"])
+    upd = {"uses": inv["uses"] + 1}
     if inv["preset_name"] or inv["preset_nickname"]:
-        db.update("invites", {"token": tok}, {"used_by": user["id"]})
+        upd["used_by"] = user["id"]
+    db.update("invites", {"token": tok}, upd)
     return {"user": svc.user_public(user), "token": user["token"], "family": svc.family_out(fam, user["id"])}
+
+
+# ----- client diagnostics: apps upload crash logs here so they can be looked at on the server -------
+CLIENT_LOGS = DATA / "client-logs"
+
+
+class ClientLogIn(BaseModel):
+    kind: str = "crash"
+    text: str
+    app_version: str = ""
+    device: str = ""
+
+
+@app.post("/api/client-logs")
+def client_log(body: ClientLogIn, user: dict = Depends(current_user)):
+    CLIENT_LOGS.mkdir(parents=True, exist_ok=True)
+    files = sorted(CLIENT_LOGS.glob("*.txt"))
+    for old in files[:-200]:  # keep the newest 200
+        old.unlink(missing_ok=True)
+    name = f"{time.strftime('%Y%m%d-%H%M%S')}-{re.sub(r'[^a-z]', '', body.kind.lower())[:10] or 'log'}-{user['id'][:12]}.txt"
+    head = f"user={user['name']} ({user['id']})\napp={body.app_version}\ndevice={body.device}\n\n"
+    (CLIENT_LOGS / name).write_text(head + body.text[:64000], encoding="utf-8")
+    log.warning("client %s log from %s: %s", body.kind, user["name"], body.text.splitlines()[0][:200] if body.text else "")
+    return {"ok": True}
 
 
 @app.get("/api/qr")
@@ -1242,18 +1340,92 @@ async def _leave_voice(uid: str) -> None:
 # ---------------------------------------------------------------------------------------------
 # web client & static
 # ---------------------------------------------------------------------------------------------
+APK = DATA / "famichibi.apk"  # optional: put the Android app here to offer it on the invite page
+
+
+@app.get("/app.apk")
+def app_apk():
+    if not APK.exists():
+        raise HTTPException(404, "アプリは配布されていません")
+    return FileResponse(APK, media_type="application/vnd.android.package-archive", filename="famichibi.apk")
+
+
 @app.get("/join/{tok}", response_class=HTMLResponse)
 def join_page(tok: str, request: Request):
+    """Invite landing page: a normal http link that any chat app can open, with buttons into the app or the web chat."""
+    e = html.escape
     inv = db.one("SELECT * FROM invites WHERE token=?", (tok,))
-    fam = db.family(inv["family_id"]) if inv else None
-    if not fam:
-        return HTMLResponse("<h1>招待が見つかりません</h1>", status_code=404)
-    link = f"famichibi://join?host={public_base(request)}&invite={tok}"
-    return HTMLResponse(f"""<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
-<title>{fam['name']}への招待</title><body style="font-family:sans-serif;text-align:center;padding:24px;background:#fff8f2">
-<h2>{fam['emoji']} {fam['name']} に招待されています</h2><p>FamiChibiアプリで開くか、QRを読み取ってください</p>
-<p><a href="{link}" style="display:inline-block;padding:14px 24px;background:#ff8a65;color:#fff;border-radius:999px;text-decoration:none">アプリで参加</a></p>
-<img src="/api/qr?data={urllib.parse.quote(link, safe='')}" width=220><p><a href="/?invite={tok}">ブラウザで参加</a></p></body>""")
+    problem = invite_problem(inv)
+    if problem:
+        body = f'''<div class="card"><div class="big">🥲</div><h1>{e(problem)}</h1>
+<p class="muted">招待リンクには有効期限があります。家族のアプリの「家族」タブ → 家族を招待 から、新しいリンクを送ってもらってください。</p></div>'''
+        return HTMLResponse(JOIN_PAGE.format(title="招待", body=body), status_code=410 if inv else 404)
+    fam = db.family(inv["family_id"])
+    base = public_base(request)
+    links = invite_links(base, tok)
+    inviter = db.user(inv["created_by"]) if inv["created_by"] else None
+    members = db.members(fam["id"])
+    chips = "".join(f'<span class="m"><i style="background:{e(m["color"] or "#ff8a65")}">{e(m["name"][:1])}</i>{e(m["name"])}{"（" + e(m["nickname"]) + "）" if m["nickname"] and m["nickname"] != m["name"] else ""}</span>'
+                    for m in members[:8])
+    if inv["expires_at"]:
+        exp = datetime.fromtimestamp(inv["expires_at"], timeparse.TZ)
+        left = inv["expires_at"] - now()
+        left_txt = f"あと{int(left // 86400)}日" if left >= 86400 else f"あと{max(1, int(left // 3600))}時間" if left >= 3600 else f"あと{max(1, int(left // 60))}分"
+        expiry = f"{exp:%m月%d日 %H:%M} まで有効（{left_txt}）"
+    else:
+        expiry = "有効期限なし"
+    if inv["preset_name"] or inv["preset_nickname"]:
+        expiry += "・1回だけ使えます"
+    who = f"{e(inv['preset_name'])}さん、" if inv["preset_name"] else ""
+    host_q = urllib.parse.quote(base, safe="")
+    fallback = urllib.parse.quote(f"{links['url']}?noapp=1", safe="")
+    intent = f"intent://join?host={host_q}&invite={tok}#Intent;scheme=famichibi;package=com.daijobu.famichibi;S.browser_fallback_url={fallback};end"
+    apk = '<a class="btn ghost" href="/app.apk">⬇️ Android アプリをダウンロード</a>' if APK.exists() else ""
+    body = f'''<div class="card">
+<div class="big">{e(fam["emoji"])}</div>
+<p class="muted">{e(inviter["name"]) + "さんから" if inviter else ""}FamiChibiへの招待</p>
+<h1>{who}「{e(fam["name"])}」に<br>参加しませんか？</h1>
+<div class="members">{chips}</div>
+<p class="exp">⏰ {e(expiry)}</p>
+<a class="btn" id="app" href="{e(links["link"])}" data-intent="{e(intent)}">📱 アプリで参加する</a>
+<a class="btn sub" href="/?invite={tok}">💬 ブラウザでチャットする<small>インストール不要・このページから参加</small></a>
+<div id="noapp" class="hint" hidden>アプリが開かないときは、アプリをインストールしてからもう一度押すか、ブラウザで参加してください。{apk}</div>
+<details><summary>アプリで手入力するとき・ほかのスマホで読み取るとき</summary>
+<p>サーバー <code>{e(base)}</code><br>招待コード <code class="code">{e(fam["code"])}</code></p>
+<img src="{e(links["qr"])}" alt="招待QRコード" width="200" height="200"></details>
+</div>
+<script>
+const a = document.getElementById('app');
+if (/Android/i.test(navigator.userAgent) && !/; wv\)/.test(navigator.userAgent)) a.href = a.dataset.intent;
+a.addEventListener('click', () => setTimeout(() => {{ if (!document.hidden) document.getElementById('noapp').hidden = false; }}, 1800));
+if (location.search.includes('noapp')) document.getElementById('noapp').hidden = false;
+</script>'''
+    return HTMLResponse(JOIN_PAGE.format(title=f"{e(fam['name'])}への招待", body=body))
+
+
+JOIN_PAGE = """<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{title} | FamiChibi</title><meta name="robots" content="noindex"><meta property="og:title" content="{title} | FamiChibi">
+<style>
+:root{{--peach:#e8745a;--ink:#3a2e2b;--muted:#7a6a63;--bg:#fff8f2}}
+@media (prefers-color-scheme:dark){{:root{{--ink:#f3e9e4;--muted:#b8a9a2;--bg:#1d1a20}} .card{{background:#2a2530!important}} details,code{{background:#3a3340!important}}}}
+*{{box-sizing:border-box}} body{{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px 16px;background:var(--bg);color:var(--ink);
+font-family:"Hiragino Maru Gothic ProN","Yu Gothic UI","Noto Sans JP",system-ui,sans-serif;line-height:1.7}}
+.card{{width:min(440px,100%);background:#fff;border-radius:28px;padding:30px 24px;text-align:center;box-shadow:0 14px 40px rgba(160,90,60,.15);animation:up .6s cubic-bezier(.2,1,.3,1)}}
+@keyframes up{{from{{opacity:0;transform:translateY(20px)}}}}
+.big{{font-size:56px;line-height:1;animation:bob 3s ease-in-out infinite}} @keyframes bob{{50%{{transform:translateY(-6px)}}}}
+h1{{font-size:22px;margin:6px 0 14px;line-height:1.5}} .muted{{color:var(--muted);font-size:14px;margin:10px 0 0}}
+.members{{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0 0 10px}}
+.m{{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;padding:3px 10px 3px 3px;border-radius:999px;background:rgba(232,116,90,.1)}}
+.m i{{width:22px;height:22px;border-radius:50%;color:#fff;font-style:normal;font-size:12px;display:grid;place-items:center}}
+.exp{{font-size:13px;color:var(--muted);margin:0 0 18px}}
+.btn{{display:block;padding:15px 18px;margin:10px 0;border-radius:18px;background:var(--peach);color:#fff;font-weight:800;font-size:17px;text-decoration:none;box-shadow:0 8px 20px rgba(232,116,90,.35)}}
+.btn small{{display:block;font-weight:600;font-size:12px;opacity:.85}}
+.btn.sub{{background:#fff;color:var(--peach);border:2px solid var(--peach);box-shadow:none}} .btn.ghost{{background:#3a2e2b;box-shadow:none;font-size:15px;margin-top:10px}}
+.hint{{font-size:13px;background:#fff1d6;color:#6b4a1a;border-radius:14px;padding:10px 12px;margin:8px 0;text-align:left}}
+details{{margin-top:16px;font-size:13px;color:var(--muted);background:#faf3ee;border-radius:14px;padding:10px 12px;text-align:left}}
+summary{{cursor:pointer;font-weight:700}} details img{{display:block;margin:8px auto 0;border-radius:10px}}
+code{{background:#f1e6df;border-radius:6px;padding:1px 6px;word-break:break-all}} code.code{{font-size:18px;font-weight:800;letter-spacing:.1em;color:var(--peach)}}
+</style></head><body>{body}</body></html>"""
 
 
 app.mount("/stage", StaticFiles(directory=STATIC / "stage", html=True), name="stage")

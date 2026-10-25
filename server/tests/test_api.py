@@ -72,7 +72,22 @@ def test_flow():
         inv = c.post(f"/api/families/{fid}/invites", json={"preset_name": "おばあちゃん", "preset_nickname": "祖母"}, headers=auth(a["token"])).json()
         cl = c.post(f"/api/invites/{inv['token']}/claim", json={}).json()
         assert cl["token"] and any(m["nickname"] == "祖母" for m in cl["family"]["members"])
-        assert c.post(f"/api/invites/{inv['token']}/claim", json={}).status_code == 404
+        assert c.post(f"/api/invites/{inv['token']}/claim", json={}).status_code == 410
+        # shareable link: an http page that works in any chat app, reusable until it expires
+        share = c.post(f"/api/families/{fid}/invites", json={"expires_hours": 24}, headers=auth(a["token"])).json()
+        assert share["url"].endswith(f"/join/{share['token']}") and share["expires_at"] and not share["single_use"]
+        page = c.get(f"/join/{share['token']}")
+        assert page.status_code == 200 and "アプリで参加する" in page.text and "intent://join" in page.text and "まで有効" in page.text
+        for name in ("いとこ", "おじ"):
+            assert c.post(f"/api/invites/{share['token']}/claim", json={"name": name}).status_code == 200
+        assert any(i["token"] == share["token"] and i["uses"] == 2 for i in c.get(f"/api/families/{fid}/invites", headers=auth(a["token"])).json()["invites"])
+        old = c.post(f"/api/families/{fid}/invites", json={"expires_hours": 1}, headers=auth(a["token"])).json()
+        from app.main import db
+        db.update("invites", {"token": old["token"]}, {"expires_at": 1.0})
+        assert c.post(f"/api/invites/{old['token']}/claim", json={}).status_code == 410
+        assert c.get(f"/join/{old['token']}").status_code == 410 and "期限切れ" in c.get(f"/join/{old['token']}").text
+        assert c.delete(f"/api/families/{fid}/invites/{share['token']}", headers=auth(a["token"])).json()["ok"]
+        assert c.get(f"/join/{share['token']}").status_code == 404
 
 
 def test_presence_and_watch():
@@ -102,3 +117,23 @@ def test_presence_and_watch():
         tl = c.get(f"/api/families/{fid}/timeline", headers=H).json()["timeline"]
         assert any(t["kind"] == "arrive" for t in tl)
         assert c.get("/api/info").json()["lan_urls"] is not None
+
+
+def test_idempotent_retries_and_client_logs():
+    """An app retrying a queued write (same Idempotency-Key) must not create duplicates."""
+    with TestClient(app) as c:
+        a = c.post("/api/register", json={"name": "母"}).json()
+        h = {**auth(a["token"]), "Idempotency-Key": "op-123"}
+        fid = c.post("/api/families", json={"name": "テスト家"}, headers=auth(a["token"])).json()["family"]["id"]
+        r1 = c.post(f"/api/families/{fid}/tasks", json={"title": "お風呂掃除"}, headers=h)
+        r2 = c.post(f"/api/families/{fid}/tasks", json={"title": "お風呂掃除"}, headers=h)
+        assert r1.status_code == r2.status_code == 200 and r1.json()["task"]["id"] == r2.json()["task"]["id"]
+        assert r2.headers.get("idempotent-replay") == "true"
+        tasks = c.get(f"/api/families/{fid}/tasks", headers=auth(a["token"])).json()["tasks"]
+        assert [t["title"] for t in tasks] == ["お風呂掃除"]
+        # a different key is a different operation
+        c.post(f"/api/families/{fid}/tasks", json={"title": "お風呂掃除"}, headers={**auth(a["token"]), "Idempotency-Key": "op-124"})
+        assert len(c.get(f"/api/families/{fid}/tasks", headers=auth(a["token"])).json()["tasks"]) == 2
+        # crash logs from the app
+        assert c.post("/api/client-logs", json={"text": "java.lang.IllegalArgumentException: Key was already used", "kind": "crash"},
+                      headers=auth(a["token"])).json()["ok"]

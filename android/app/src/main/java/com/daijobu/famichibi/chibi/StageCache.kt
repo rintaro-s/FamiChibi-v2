@@ -31,6 +31,13 @@ object StageCache {
         (web.parent as? ViewGroup)?.removeView(web)
     }
 
+    /** Destroy stages that are not on screen (they are rebuilt from the on-disk VRM cache when shown again). */
+    fun trim() {
+        val hidden = stages.filterValues { it.parent == null && it.owner == null } // parked: no screen holds it
+        hidden.forEach { (k, w) -> stages.remove(k); w.destroy() }
+        if (hidden.isNotEmpty()) android.util.Log.i("StageCache", "trimmed ${hidden.size} hidden stage(s)")
+    }
+
     fun clear() {
         stages.values.forEach { (it.parent as? ViewGroup)?.removeView(it); it.destroy() }
         stages.clear()

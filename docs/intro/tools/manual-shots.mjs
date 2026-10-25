@@ -3,7 +3,7 @@ const out = process.argv[2];
 const browser = await chromium.launch();
 for (const [w, tag] of [[390, 'm'], [1280, 'd']]) {
   const page = await browser.newPage({ viewport: { width: w, height: 900 }, deviceScaleFactor: 1 });
-  for (const f of ['index', 'server', 'app', 'avatar', 'daily']) {
+  for (const f of (process.argv[3] || 'index,server,app,avatar,daily,features').split(',')) {
     await page.goto(new URL(`../manual/${f}.html`, import.meta.url).href);
     await page.evaluate(() => document.querySelectorAll('.step').forEach((s) => s.classList.add('in')));
     await page.waitForTimeout(700);

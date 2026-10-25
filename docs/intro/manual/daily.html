@@ -3,11 +3,11 @@
 <title>毎日の使い方 | FamiChibi 使い方マニュアル</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="manual.css"></head>
+<link rel="stylesheet" href="manual.css?v=3731e616"></head>
 <body>
-<div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a><a href="index.html" class="">📖 マニュアル</a><a href="server.html" class="">🖥 サーバーの建て方</a><a href="app.html" class="">📱 アプリをつなぐ</a><a href="avatar.html" class="">🧸 アバター(VRM)</a><a href="daily.html" class="on">🏠 毎日の使い方</a></div></div>
+<div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a><a href="index.html" class="">📖 マニュアル</a><a href="server.html" class="">🖥 サーバーの建て方</a><a href="app.html" class="">📱 アプリをつなぐ</a><a href="avatar.html" class="">🧸 アバター(VRM)</a><a href="daily.html" class="on">🏠 毎日の使い方</a><a href="features.html" class="">⚙️ 機能・設定</a></div></div>
 <div class="wrap">
-<div class="head"><div class="crumb">使い方マニュアル 5 / 5</div><h1>毎日の使い方</h1><p>ふだんはアプリを開かなくても大丈夫。家族の連絡と「けはい」が、ちびっこに乗ってやってきます。</p><div class="point-bar"><span>💬 ちびっこが届ける</span><span>🏠 けはい・見守り</span><span>🤖 AIは「なぜ？」を話す</span></div></div>
+<div class="head"><div class="crumb">使い方マニュアル 5 / 6</div><h1>毎日の使い方</h1><p>ふだんはアプリを開かなくても大丈夫。家族の連絡と「けはい」が、ちびっこに乗ってやってきます。</p><div class="point-bar"><span>💬 ちびっこが届ける</span><span>🏠 けはい・見守り</span><span>🤖 AIは「なぜ？」を話す</span></div></div>
 <section class="step"><div><div class="num">1</div><h2>連絡は、ちびっこが届ける</h2>
 <p>家族がメッセージを送ると、<b>その人のちびっこ</b>が画面の端から歩いてきて、吹き出しで伝えます。吹き出しのボタン（「今行く！」など）をタップすれば、そのまま返事。相手のスマホには<b>あなたのちびっこ</b>が届けに行きます。</p>
 <ul><li><b>急ぎ</b>（迎えに来て・至急 など）：ロック画面にも表示、1分未読で再ノック、2.5分誰も見なければAIが家族全員に呼びかけ</li>
@@ -26,7 +26,7 @@
 </div><div><div class="phone"><video src="media/silent.mp4" muted loop playsinline preload="metadata"></video></div></div></section><section class="step"><div><div class="num">6</div><h2>横画面・パソコンでも</h2>
 <p>スマホを横にすると、左にリビング・右に会話。パソコンからはブラウザでサーバーのアドレス（例：<code>http://サーバー:8010</code>）を開けば、同じリビングに参加できます。</p>
 </div><div><div class="phone"><video src="media/rotate.mp4" muted loop playsinline preload="metadata"></video></div></div></section>
-<div class="pager"><a href="avatar.html"><small>← 前へ</small>🧸 アバター(VRM)</a><a class="next" href="../index.html"><small>トップへ →</small>🏠 紹介ページ</a></div>
+<div class="pager"><a href="avatar.html"><small>← 前へ</small>🧸 アバター(VRM)</a><a class="next" href="features.html"><small>次へ →</small>⚙️ 機能・設定</a></div>
 </div>
 <footer>FamiChibi — Team Daijobu（鳥羽商船高等専門学校）／ 画面はすべて実機（Android 15 / 16）で撮影</footer>
 <script>
@@ -34,7 +34,7 @@
 const io = new IntersectionObserver((es) => es.forEach((e) => {
   if (e.isIntersecting) e.target.classList.add('in');
   e.target.querySelectorAll('video').forEach((v) => e.isIntersecting ? v.play().catch(() => {}) : v.pause());
-}), { threshold: .25 });
+}), { threshold: 0, rootMargin: '0px 0px -12% 0px' });  // threshold 0: tall sections must still appear
 document.querySelectorAll('.step, .video-box').forEach((s) => io.observe(s));
 </script>
 </body></html>

@@ -12,6 +12,7 @@ import com.daijobu.famichibi.service.ChibiService
 class FamiApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        CrashLog.install(this)
         Graph.init(this)
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
@@ -20,6 +21,12 @@ class FamiApp : Application() {
             }
             override fun onStop(owner: LifecycleOwner) { Graph.appInForeground.value = false }
         })
+    }
+
+    /** Each 3D stage holds several VRMs in GPU/JS memory: give hidden ones back when Android runs low. */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_RUNNING_LOW) com.daijobu.famichibi.chibi.StageCache.trim()
     }
 }
 

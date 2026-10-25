@@ -58,6 +58,13 @@ class Api(baseUrl: String, var token: String? = null) {
         exec(request(path).patch(body.toString().toRequestBody(JSON)).build())
     suspend fun delete(path: String): JsonObject = exec(request(path).delete().build())
 
+    /** A queued write: [idempotencyKey] lets the server recognise a retry and replay the first result. */
+    suspend fun send(method: String, path: String, body: JsonElement?, idempotencyKey: String): JsonObject {
+        val b = request(path).header("Idempotency-Key", idempotencyKey)
+        val rb = (body?.toString() ?: "{}").toRequestBody(JSON)
+        return exec(when (method) { "POST" -> b.post(rb); "PATCH" -> b.patch(rb); "DELETE" -> b.delete(); else -> error("method $method") }.build())
+    }
+
     suspend fun upload(path: String, file: File, mime: String, fields: Map<String, String> = emptyMap(), field: String = "file"): JsonObject {
         val mb = MultipartBody.Builder().setType(MultipartBody.FORM)
         fields.forEach { (k, v) -> mb.addFormDataPart(k, v) }

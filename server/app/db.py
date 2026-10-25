@@ -181,6 +181,14 @@ CREATE TABLE IF NOT EXISTS avatars (
   created_at REAL NOT NULL
 );
 
+-- replies to client-retried writes (Idempotency-Key): a resent request returns the first result
+CREATE TABLE IF NOT EXISTS idempotency (
+  key TEXT PRIMARY KEY,
+  status INTEGER NOT NULL,
+  body BLOB NOT NULL,
+  at REAL NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS kv (
   k TEXT PRIMARY KEY,
   v TEXT NOT NULL
@@ -212,6 +220,11 @@ class DB:
                     self.conn.execute(f"ALTER TABLE members ADD COLUMN {col}")
                 except sqlite3.OperationalError:
                     pass  # already migrated
+            for col in ("expires_at REAL", "uses INTEGER NOT NULL DEFAULT 0"):
+                try:
+                    self.conn.execute(f"ALTER TABLE invites ADD COLUMN {col}")
+                except sqlite3.OperationalError:
+                    pass
 
     # -- low level ---------------------------------------------------------------------------
     @staticmethod

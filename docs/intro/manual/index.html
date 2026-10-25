@@ -3,11 +3,11 @@
 <title>使い方マニュアル | FamiChibi 使い方マニュアル</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="manual.css"></head>
+<link rel="stylesheet" href="manual.css?v=3731e616"></head>
 <body>
-<div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a><a href="index.html" class="on">📖 マニュアル</a><a href="server.html" class="">🖥 サーバーの建て方</a><a href="app.html" class="">📱 アプリをつなぐ</a><a href="avatar.html" class="">🧸 アバター(VRM)</a><a href="daily.html" class="">🏠 毎日の使い方</a></div></div>
+<div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a><a href="index.html" class="on">📖 マニュアル</a><a href="server.html" class="">🖥 サーバーの建て方</a><a href="app.html" class="">📱 アプリをつなぐ</a><a href="avatar.html" class="">🧸 アバター(VRM)</a><a href="daily.html" class="">🏠 毎日の使い方</a><a href="features.html" class="">⚙️ 機能・設定</a></div></div>
 <div class="wrap">
-<div class="head"><div class="crumb">使い方マニュアル 1 / 5</div><h1>使い方マニュアル</h1><p>FamiChibiは「家族サーバー」と「アプリ」の2つでできています。サーバーを1台立てて、家族のスマホからつなぐだけ。</p><div class="point-bar"><span>⏱ はじめるまで 約5分</span><span>📱 Android 10以上</span><span>🖥 PC・ラズパイ・VPS</span></div></div>
+<div class="head"><div class="crumb">使い方マニュアル 1 / 6</div><h1>使い方マニュアル</h1><p>FamiChibiは「家族サーバー」と「アプリ」の2つでできています。サーバーを1台立てて、家族のスマホからつなぐだけ。</p><div class="point-bar"><span>⏱ はじめるまで 約5分</span><span>📱 Android 10以上</span><span>🖥 PC・ラズパイ・VPS</span></div></div>
 
 <div class="video-box"><video src="media/famichibi-demo.mp4" controls muted playsinline preload="metadata" poster="media/demo-poster.jpg"></video></div>
 <div class="flow"><span>🖥 サーバーを立てる</span><i>→</i><span>📱 アプリでつなぐ</span><i>→</i><span>🧸 アバターを選ぶ</span><i>→</i><span>🏠 家族のリビングへ</span></div>
@@ -16,6 +16,7 @@
   <a class="card" href="app.html"><span class="ic">📱</span><h3>2. アプリをつなぐ</h3><p>サーバーは自動で見つかります。招待コードかNFCカードで家族に参加。</p><span class="go">読む →</span></a>
   <a class="card" href="avatar.html"><span class="ic">🧸</span><h3>3. アバター(VRM)</h3><p>3Dで選ぶ・自分のVRMを使う・つかんで投げる。</p><span class="go">読む →</span></a>
   <a class="card" href="daily.html"><span class="ic">🏠</span><h3>4. 毎日の使い方</h3><p>ちびっこが届ける連絡、けはい、見守り、AI、サイレント。</p><span class="go">読む →</span></a>
+  <a class="card wide" href="features.html"><span class="ic">⚙️</span><h3>5. 機能・設定ガイド</h3><p>チャット・冷蔵庫メモ・カレンダー・やること・おうち・家族タブ・設定の全項目。困ったときの辞書として。</p><span class="go">読む →</span></a>
 </div>
 <section class="step wide"><div><h2>FamiChibiの3つのポイント</h2>
 <ol>
@@ -32,7 +33,7 @@
 const io = new IntersectionObserver((es) => es.forEach((e) => {
   if (e.isIntersecting) e.target.classList.add('in');
   e.target.querySelectorAll('video').forEach((v) => e.isIntersecting ? v.play().catch(() => {}) : v.pause());
-}), { threshold: .25 });
+}), { threshold: 0, rootMargin: '0px 0px -12% 0px' });  // threshold 0: tall sections must still appear
 document.querySelectorAll('.step, .video-box').forEach((s) => io.observe(s));
 </script>
 </body></html>

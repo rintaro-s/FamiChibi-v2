@@ -39,8 +39,23 @@ export class Living {
     for (const id of window.Chibi.ids()) if (!ids.includes(id)) window.Chibi.remove(id);
     window.Chibi.room({ members: members.length });
     this.presence(members);
-    this._status(`読み込み中… (${members.length}人)`);
-    await Promise.all(members.map((m) => this._add(m)));
+    // VRMs are 10-20MB each: download at most 2 at a time so chat/API requests are never stuck
+    // behind them (browsers allow only ~6 connections per server), and show each chibi as it arrives.
+    // (already-loaded ones just get their name/color refreshed, so they go first)
+    const queue = [...members].sort((a, b) => window.Chibi.has(b.id) - window.Chibi.has(a.id));
+    let done = 0;
+    const status = () => this._status(done < members.length ? `ちびっこを読み込み中… ${done}/${members.length}` : '');
+    status();
+    const worker = async () => {
+      while (queue.length && this.key === key) {
+        await this._add(queue.shift());
+        done++;
+        if (this.key !== key) return;
+        window.Chibi.arrangeRow(ids.filter((id) => window.Chibi.has(id)));
+        status();
+      }
+    };
+    await Promise.all([worker(), worker()]);
     if (this.key !== key) return;
     window.Chibi.arrangeRow(ids.filter((id) => window.Chibi.has(id)));
     this._status('');

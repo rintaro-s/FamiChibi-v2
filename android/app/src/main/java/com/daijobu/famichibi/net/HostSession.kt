@@ -1,7 +1,9 @@
 package com.daijobu.famichibi.net
 
 import android.util.Log
+import com.daijobu.famichibi.data.DiskCache
 import com.daijobu.famichibi.data.HostAccount
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -63,6 +65,30 @@ class HostSession(account0: HostAccount, private val scope: CoroutineScope) {
 
     private val messageFlows = HashMap<String, MutableStateFlow<List<Message>>>()
 
+    // ------------------------------------------------------------------ local-first state (see Sync.kt)
+    /** On-device copy of this account's data: the app opens with the last known state, even offline. */
+    val cache = DiskCache(account0.token, scope)
+    /** Changes made in the app that the server has not confirmed yet (persisted, sent in order). */
+    val outbox = Outbox(cache, scope) { op -> api.send(op.method, op.path, op.body, op.id) }
+    private val stores = HashMap<String, FamilyStore>()
+
+    /** Memos / calendar / to-dos of a family, shared by every screen that shows them. */
+    fun store(fid: String): FamilyStore = synchronized(stores) { stores.getOrPut(fid) { FamilyStore(this, fid, cache, outbox, scope) } }
+
+    init {
+        cache.read(SNAPSHOT, Snapshot.serializer())?.let { snap ->
+            _me.value = snap.me
+            _families.value = snap.families
+        }
+        // keep the on-device copy of "who am I / my families" current
+        scope.launch { _families.collect { saveSnapshot() } }
+    }
+
+    private fun saveSnapshot() {
+        val me = _me.value ?: return
+        cache.write(SNAPSHOT, Snapshot.serializer(), Snapshot(me, _families.value), delayMs = 1500)
+    }
+
     private var ws: WebSocket? = null
     private var reconnectJob: Job? = null
     private var attempts = 0
@@ -71,7 +97,14 @@ class HostSession(account0: HostAccount, private val scope: CoroutineScope) {
     fun family(id: String?): Family? = _families.value.firstOrNull { it.id == id }
 
     fun messages(channelId: String): StateFlow<List<Message>> =
-        synchronized(messageFlows) { messageFlows.getOrPut(channelId) { MutableStateFlow(emptyList()) } }
+        synchronized(messageFlows) {
+            messageFlows.getOrPut(channelId) {
+                // start from the cached history so the chat is readable before (or without) a connection
+                MutableStateFlow(cache.read("msg-$channelId", ListSerializer(Message.serializer())) ?: emptyList()).also { f ->
+                    scope.launch { f.collect { list -> if (list.isNotEmpty()) cache.write("msg-$channelId", ListSerializer(Message.serializer()), list.takeLast(80), 2000) } }
+                }
+            }
+        }
 
     // ------------------------------------------------------------------ connection
     fun start() {
@@ -96,6 +129,8 @@ class HostSession(account0: HostAccount, private val scope: CoroutineScope) {
                 attempts = 0
                 _connected.value = true
                 scope.launch { learnAlternates() }
+                outbox.flush() // send what was changed while offline
+                com.daijobu.famichibi.CrashLog.upload(this@HostSession)
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -178,8 +213,10 @@ class HostSession(account0: HostAccount, private val scope: CoroutineScope) {
                 _home.value = ev.obj("home")
                 _asks.value = runCatching { JsonCfg.decodeFromJsonElement<List<Ask>>(ev["asks"]!!) }.getOrDefault(emptyList())
                 _voice.value = ev.obj("voice")?.mapValues { (_, v) -> v.jsonArray.map { it.strOrNull().orEmpty() } } ?: emptyMap()
-                // refresh open channels after a reconnect
+                // refresh open channels and family data after a reconnect
                 synchronized(messageFlows) { messageFlows.keys.toList() }.forEach { cid -> scope.launch { runCatching { loadMessages(cid) } } }
+                // and keep every family's memos / calendar / to-dos cached, so they can be read offline later
+                _families.value.forEach { store(it.id).refreshAll() }
             }
             "message" -> {
                 val m = JsonCfg.decodeFromJsonElement<Message>(ev["message"]!!)
@@ -223,6 +260,10 @@ class HostSession(account0: HostAccount, private val scope: CoroutineScope) {
                 _voice.update { it + (cid to users) }
             }
             "home" -> _home.value = ev.obj("home")
+            // someone (maybe this phone) changed shared data: re-read the server copy (refreshes are single-flight)
+            "memo", "memo_deleted", "memo_due" -> storeIfOpen(ev.str("family_id"))?.memos?.refresh()
+            "task", "task_deleted", "task_done" -> storeIfOpen(ev.str("family_id"))?.tasks?.refresh()
+            "event", "event_deleted" -> storeIfOpen(ev.str("family_id"))?.events?.refresh()
             "ask" -> {
                 val a = JsonCfg.decodeFromJsonElement<Ask>(ev["ask"]!!)
                 _asks.update { l -> l.filterNot { it.id == a.id } + a }
@@ -239,6 +280,8 @@ class HostSession(account0: HostAccount, private val scope: CoroutineScope) {
         }
     }
 
+    private fun storeIfOpen(fid: String?): FamilyStore? = fid?.let { synchronized(stores) { stores[it] } }
+
     private fun bumpUnread(fid: String, cid: String, n: Int) {
         _families.update { l -> l.map { f -> if (f.id == fid) f.copy(unread = f.unread + (cid to ((f.unread[cid] ?: 0) + n))) else f } }
     }
@@ -248,6 +291,7 @@ class HostSession(account0: HostAccount, private val scope: CoroutineScope) {
         val r = api.get("/api/me")
         _me.value = api.decode(r["user"])
         _families.value = api.decode(r["families"])
+        saveSnapshot()
     }
 
     suspend fun loadMessages(cid: String): List<Message> {
@@ -295,7 +339,11 @@ class HostSession(account0: HostAccount, private val scope: CoroutineScope) {
 
     fun avatarUrl(avatarId: String?): String? = avatarId?.takeIf { it.isNotBlank() }?.let { api.url("/avatars/${avatarFile(it)}") }
 
+    @kotlinx.serialization.Serializable
+    data class Snapshot(val me: User, val families: List<Family>)
+
     companion object {
+        private const val SNAPSHOT = "session"
         const val TAG = "HostSession"
         /** Avatar ids map to files: builtin_<stem> -> <stem>.vrm, av_xxx -> av_xxx.vrm */
         fun avatarFile(id: String) = if (id.startsWith("builtin_")) id.removePrefix("builtin_") + ".vrm" else "$id.vrm"

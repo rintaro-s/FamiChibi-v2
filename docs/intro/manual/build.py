@@ -2,12 +2,15 @@
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# cache-buster: browsers keep the old stylesheet otherwise and the new markup renders broken
+CSS_VER = __import__("hashlib").md5(open(os.path.join(HERE, "manual.css"), "rb").read()).hexdigest()[:8]
 PAGES = [
     ("index.html", "マニュアル", "📖"),
     ("server.html", "サーバーの建て方", "🖥"),
     ("app.html", "アプリをつなぐ", "📱"),
     ("avatar.html", "アバター(VRM)", "🧸"),
     ("daily.html", "毎日の使い方", "🏠"),
+    ("features.html", "機能・設定", "⚙️"),
 ]
 
 
@@ -34,7 +37,7 @@ def page(fname, title, lead, chips, body):
 <title>{title} | FamiChibi 使い方マニュアル</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="manual.css"></head>
+<link rel="stylesheet" href="manual.css?v={CSS_VER}"></head>
 <body>
 <div class="top"><div class="wrap"><a class="logo" href="../index.html">🏠 FamiChibi</a>{nav}</div></div>
 <div class="wrap">
@@ -48,11 +51,15 @@ def page(fname, title, lead, chips, body):
 const io = new IntersectionObserver((es) => es.forEach((e) => {{
   if (e.isIntersecting) e.target.classList.add('in');
   e.target.querySelectorAll('video').forEach((v) => e.isIntersecting ? v.play().catch(() => {{}}) : v.pause());
-}}), {{ threshold: .25 }});
+}}), {{ threshold: 0, rootMargin: '0px 0px -12% 0px' }});  // threshold 0: tall sections must still appear
 document.querySelectorAll('.step, .video-box').forEach((s) => io.observe(s));
 </script>
 </body></html>
 """
+
+
+def sc(name, cap):
+    return f'<figure class="sc"><a href="media/shots/{name}.jpg" target="_blank"><img src="media/shots/{name}.jpg" alt="{cap}" loading="lazy"></a><figcaption>{cap}</figcaption></figure>'
 
 
 def step(n, title, html, media="", wide=False):
@@ -77,6 +84,7 @@ pages["index.html"] = page(
   <a class="card" href="app.html"><span class="ic">📱</span><h3>2. アプリをつなぐ</h3><p>サーバーは自動で見つかります。招待コードかNFCカードで家族に参加。</p><span class="go">読む →</span></a>
   <a class="card" href="avatar.html"><span class="ic">🧸</span><h3>3. アバター(VRM)</h3><p>3Dで選ぶ・自分のVRMを使う・つかんで投げる。</p><span class="go">読む →</span></a>
   <a class="card" href="daily.html"><span class="ic">🏠</span><h3>4. 毎日の使い方</h3><p>ちびっこが届ける連絡、けはい、見守り、AI、サイレント。</p><span class="go">読む →</span></a>
+  <a class="card wide" href="features.html"><span class="ic">⚙️</span><h3>5. 機能・設定ガイド</h3><p>チャット・冷蔵庫メモ・カレンダー・やること・おうち・家族タブ・設定の全項目。困ったときの辞書として。</p><span class="go">読む →</span></a>
 </div>
 <section class="step wide"><div><h2>FamiChibiの3つのポイント</h2>
 <ol>
@@ -132,7 +140,7 @@ WantedBy=multi-user.target</code></pre>
 pages["app.html"] = page(
     "app.html", "アプリをつなぐ",
     "アプリを開いてから家族のリビングに入るまで、実機で約1分半。むずかしい入力はほとんどありません。",
-    ["🔍 サーバー自動発見", "🧸 3Dでアバター選び", "🔑 招待コード / NFC"],
+    ["🔍 サーバー自動発見", "🧸 3Dでアバター選び", "🔗 招待リンク / コード / NFC"],
     step(1, "アプリを開くと、サーバーが見つかる", """
 <p>「はじめる」を押すと、同じWi-Fiの家族サーバーと、登録済みのサーバー（例：VPS）を自動で探します。見つかったサーバーをタップするだけ。</p>
 <p>見つからないときは、URL（例：<code>http://192.168.0.40:8010</code>）を入力して「接続する」。</p>
@@ -144,6 +152,7 @@ pages["app.html"] = page(
 """, vid("avatar"))
     + step(3, "家族サーバーに参加する", """
 <ul>
+<li><b>招待リンク</b>（いちばんかんたん）：LINEやメールで届いたリンクを開き、「📱 アプリで参加する」を押すだけ。アプリがなくても「💬 ブラウザでチャットする」でそのまま参加できます。</li>
 <li><b>招待コード</b>：家族に教えてもらった6文字のコードを入力（全角・小文字でもOK）。</li>
 <li><b>QRコード / NFCカード</b>：家族の「家族」タブで招待を作り、QRを読む・カードをかざすだけで参加。<b>名前入りのカード</b>なら、おじいちゃん・おばあちゃんは入力ゼロ。</li>
 <li>はじめての家族は「新しく作る」、試すだけなら「デモ家族」。</li>
@@ -212,6 +221,78 @@ pages["daily.html"] = page(
     + step(6, "横画面・パソコンでも", """
 <p>スマホを横にすると、左にリビング・右に会話。パソコンからはブラウザでサーバーのアドレス（例：<code>http://サーバー:8010</code>）を開けば、同じリビングに参加できます。</p>
 """, vid("rotate")))
+
+# ------------------------------------------------------------------------------------------- features
+def shot(name, cap):
+    return (f'<a class="fshot" href="media/shots/{name}.jpg" target="_blank"><img src="media/shots/{name}.jpg" alt="{cap}" loading="lazy">'
+            f'<span>{cap}</span></a>')
+
+
+def section(title, lead, rows):
+    """A card of feature rows: text on the left, its screenshot (if any) beside it on the right."""
+    out = [f'<section class="step fsec"><h2>{title}</h2>' + (f'<p class="lead">{lead}</p>' if lead else '') + '<div class="frows">']
+    for h, body, img in rows:
+        pic = shot(*img) if img else ''
+        out.append(f'<div class="frow{" noimg" if not img else ""}"><div><h3>{h}</h3>{body}</div>{pic}</div>')
+    out.append('</div></section>')
+    return "\n".join(out)
+
+
+pages["features.html"] = page(
+    "features.html", "機能・設定ガイド",
+    "アプリの各画面でできることと、家族タブ・設定の全項目の説明です。必要なところだけ拾い読みしてください（画像はタップで拡大）。",
+    ["💬 6つのタブ", "👨‍👩‍👧 家族の設定", "⚙️ アプリの設定", "🌐 ブラウザ版"],
+    section("家族の画面の見かた", "", [
+        ("画面の上・リビング・タブ", """<ul>
+<li><b>いちばん上</b>：家族の名前と、メンバーの今の様子（🏠 家にいる・📍 おでかけ・🚶 移動中・💤 おやすみ）。🌙 はサイレント、∧ でリビングを開け閉め。</li>
+<li><b>リビング</b>：家にいる家族のちびっこが集まります。</li>
+<li><b>タブ</b>：チャット／冷蔵庫メモ／カレンダー／やること／おうち／家族。横にスワイプすると全部出てきます。</li></ul>""", ("chat", "家族の画面")),
+        ("ちびっこをタップ", "<p>その人の様子（最後にスマホを触った時刻・電池）と、「つんつん」「なでなで」ボタンが出ます。</p>", ("card", "ちびっこをタップ")),
+    ])
+    + section("💬 チャット", "", [
+        ("送る・返す", """<ul>
+<li><b>チャンネル</b>：<code># リビング</code>（家族みんな）・<code>🤖 ちびAI</code>（AIに頼む）・<code>🔊 おしゃべり部屋</code>（音声通話）。</li>
+<li>文字を入れて ➤。左の 🎙 は<b>ボイスメッセージ</b>（押して録音、もう一度押すと送信）、右の 🗣 は<b>音声入力</b>。</li>
+<li>入力欄の上の「ありがとう！」「了解！」などは<b>ワンタップ返信</b>。</li>
+<li><b>急ぎの連絡</b>は赤い枠で表示され、ロック画面にも届きます。</li></ul>""", None),
+        ("なぜ？（判断根拠）", "<p>AIや急ぎ判定の吹き出しにある「▶ なぜ？」を押すと、どう判断したか（使った道具・参照した会話）が見られます。AIが「本人に聞かないと分からない」と判断すると、あなたに<b>質問カード</b>が届き、答えると自動で集計されます。</p>", ("why", "なぜ？")),
+        ("🌙 サイレント", "<p>右上の 🌙 から 30分／1時間／3時間／明日の朝まで。ちびっこ・読み上げ・通知音が止まり、連絡は音なし通知で残ります。</p>", ("silent", "サイレント")),
+    ])
+    + section("🧲 冷蔵庫メモ・📅 カレンダー・✅ やること・💡 おうち", "", [
+        ("🧲 冷蔵庫メモ", """<p>「<code>15日16時：カレー作っておいたから食べてね</code>」のように<b>日時を文頭に書く</b>と、その時刻に相手のスマホであなたのちびっこが踊ってお知らせ。宛先は「みんなへ」か一人を選択。タップで完了、長押しで剥がす。</p>
+<p class="small">使える書き方：今日・明日・明後日・今夜／15日・10月3日・10/3／来週の土曜／16時半・16:30／朝・夕方・夜／30分後・2時間後</p>""", ("memo-c", "冷蔵庫メモ")),
+        ("📅 カレンダー", "<p>日付をタップ → ＋追加。「家族みんなの予定」か自分の予定かを選べ、<b>内容を非公開</b>にすると家族には「予定あり」とだけ表示。誕生日は自動で表示されます。</p>", ("calendar-c", "カレンダー")),
+        ("✅ やること", "<p>「お風呂掃除」などを入れて、頼む人（だれでも／指名）を選んで追加。チェックすると、<b>頼んだ人のスマホに「やっておいたよ！」とちびっこが報告</b>に行きます。</p>", ("tasks-c", "やること")),
+        ("💡 おうち", "<p>家電の状態一覧とスイッチ。「ちびAIに頼む」ボタンで「電気消して」「エアコンつけて」も。操作するとリビングの部屋も暗く／明るくなります。</p>", ("iot-c", "おうち")),
+    ])
+    + section("👨‍👩‍👧 家族タブ（家族ごとの設定）", "", [
+        ("メンバー", "<p>家族の一覧。<b>つんつん</b>・<b>なでなで</b>は相手のスマホのちびっこに届きます（ちょっとした「元気？」に）。</p>", ("members", "メンバー")),
+        ("🌼 けはい・見守り", """<ul>
+<li><b>自分のけはいを共有する</b>：ONで、帰宅すると家族のスマホで「ただいま」、リビングに自分のちびっこが現れます。</li>
+<li><b>見守り</b>：祖父母などをONにすると、毎朝9時にちびAIが「元気？」とあいさつし、返事を家族に共有。日中4時間スマホに触れていない・電池が少ないときもそっとお知らせ（本人にも表示）。</li>
+<li><b>最近のけはい</b>：帰宅・おやすみ・見守りの記録。</li></ul>""", ("presence", "けはい・見守り")),
+        ("💌 家族を招待", "<p>有効期限（1時間〜期限なし）を選んで<b>「招待リンクを送る」</b>。LINEやメールでそのまま押せるリンクとQRができます。名前を入れた<b>専用の招待</b>は1回だけ使え、NFCカードにも書き込めます。下の6文字は招待コード。</p>", ("invite", "招待リンク")),
+        ("🤖 AIちびっこ・IoT", "<p>AIちびっこ／家電操作／LLM のON・OFF、AIの名前と見た目、Ollama のURL・モデル、家電につなぐMCPサーバー。上の「判断エンジン」でLLMにつながっているか確認できます（つながっていなくてもルールエンジンで動作）。くわしくは <a href=\"server.html\">サーバーの建て方</a>。</p>", ("ai-settings", "AIちびっこ・IoT")),
+        ("🙋 この家族でのわたし", "<p><b>呼ばれ方</b>（母・兄など。AIもこの名前で呼びます）、<b>カレンダーを非公開</b>（AIは予定を推測せず本人に聞きに来ます）、<b>おやすみ時間</b>（この時間は急ぎ以外そっと届けます）。</p>", None),
+        ("🎂 誕生日の寄せ書き", "<p>誕生日を登録している家族がいると表示。メッセージを書いておくと<b>誕生日の0時</b>に届き、家族全員のちびっこが集まってお祝いします（本人にはないしょ）。</p>", None),
+        ("🎬 デモ（発表用）", "<p>「シナリオを表示」から、帰宅・お昼寝・見守り・迎えに来て・誕生日パーティー・電気消して などを1タップで再現できます。</p>", ("demo", "デモ")),
+    ])
+    + section("⚙️ アプリの設定（ホーム画面の歯車）", "", [
+        ("🧸 ちびっこ・🌙 サイレント", """<ul>
+<li><b>画面に常駐</b>（他のアプリの上にも表示）、<b>届けたあとも隅にいる</b>、<b>ロック画面にも表示</b>、大きさ。「ちびっこを呼ぶ」「ロック画面を試す」で確認。</li>
+<li><b>サイレントモード</b>：時間を選んでON。「急ぎの連絡だけは届ける」も選べます。</li></ul>""", ("settings", "ちびっこ・サイレント")),
+        ("🔊 読み上げ・文字・⚡ クイック返信", """<ul>
+<li>ちびっこの読み上げ、話す速さ、文字の大きさ。<b>おじいちゃん・おばあちゃんモード</b>は文字とボタンを大きく、ゆっくり読み上げます。</li>
+<li><b>クイック返信</b>：ワンタップ返信の文を編集（×で削除、追加も）。</li></ul>""", ("settings2", "読み上げ・クイック返信")),
+        ("👤 プロフィール・🖥 ホストサーバー", """<ul>
+<li><b>プロフィール</b>：アバター（3Dプレビュー付き・自分のVRMも追加可）、名前、誕生日、声の高さ。「保存」で家族全員の画面に反映。</li>
+<li><b>ホストサーバー</b>：つないでいるサーバーと接続状態。「ホストを追加」で別の家族サーバーにも参加できます（家と実家など）。</li></ul>""", ("profile", "プロフィール")),
+    ])
+    + section("🌐 ブラウザだけで使う", "", [
+        ("招待リンクから", "<p>アプリを入れなくても、招待リンクの「<b>💬 ブラウザでチャットする</b>」から名前とアバターを選ぶだけで参加できます。チャット・リビング・冷蔵庫メモ・カレンダー・やること・おうち・設定（招待リンク作成も）が使えます。</p><p class=\"small\">ホーム画面への常駐・ロック画面表示・けはいの自動共有はアプリだけの機能です。</p>", ("invite-page", "招待リンクの画面")),
+        ("パソコンから", "<p>サーバーのアドレス（例：<code>http://サーバー:8010</code>）をブラウザで開くと、同じリビングに参加できます。</p>", None),
+    ]))
+
 
 for name, html in pages.items():
     with open(os.path.join(HERE, name), "w") as f:

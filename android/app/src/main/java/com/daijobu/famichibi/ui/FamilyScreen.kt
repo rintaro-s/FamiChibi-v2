@@ -26,6 +26,7 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,6 +59,9 @@ fun FamilyScreen(familyId: String, initialChannel: String?, back: () -> Unit, op
     var roomOpen by rememberSaveable { mutableStateOf(true) }
     val imeVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
     var tapped by remember { mutableStateOf<String?>(null) }
+    // queued changes the server refused (e.g. already deleted by someone else) are reported, never swallowed
+    val toastCtx = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(ref.session) { ref.session.outbox.problems.collect { toast(toastCtx, it) } }
     var channelId by rememberSaveable(familyId) { mutableStateOf(initialChannel ?: fam.textChannels.firstOrNull()?.id.orEmpty()) }
 
     DisposableEffect(familyId) {

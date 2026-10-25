@@ -92,19 +92,14 @@ fun MemoTab(ref: FamRef) {
     val fam = ref.family
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    val memos = remember { mutableStateListOf<Memo>() }
+    val store = remember(s, fam.id) { s.store(fam.id) }
+    val memos by store.memos.items.collectAsState()
     var text by remember { mutableStateOf("") }
     var preview by remember { mutableStateOf<JsonObject?>(null) }
     var color by remember { mutableStateOf(MemoColors[0]) }
     var target by remember { mutableStateOf<String?>(null) }
 
-    suspend fun reload() = runCatching { memos.clear(); memos.addAll(s.api.decode<List<Memo>>(s.api.get("/api/families/${fam.id}/memos")["memos"])) }
-    LaunchedEffect(fam.id) { reload() }
-    LaunchedEffect(fam.id) {
-        s.events.collect { ev ->
-            if (ev.str("family_id") == fam.id && ev.str("type") in setOf("memo", "memo_deleted", "memo_due")) reload()
-        }
-    }
+    LaunchedEffect(store) { store.memos.refresh() } // the server copy; WebSocket notifications refresh it too
     // Live preview of the natural-language time ("15日16時：…" -> ⏰ 10/15 16:00)
     LaunchedEffect(text) {
         preview = null
@@ -115,6 +110,7 @@ fun MemoTab(ref: FamRef) {
 
     LazyVerticalGrid(GridCells.Adaptive(160.dp), Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item(span = { GridItemSpan(maxLineSpan) }) { SyncBar(s, store.memos.key, store.memos.error) }
         item(span = { GridItemSpan(maxLineSpan) }) {
             SectionCard("🧲 冷蔵庫にメモを貼る") {
                 OutlinedTextField(text, { text = it }, placeholder = { Text("例: 15日16時：カレー作っておいたから食べてね") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
@@ -137,13 +133,8 @@ fun MemoTab(ref: FamRef) {
                     fam.members.filter { it.user_id != s.userId }.take(4).forEach { m -> FilterChip(target == m.user_id, { target = m.user_id }, label = { Text(m.label) }) }
                 }
                 Button(enabled = text.isNotBlank(), onClick = {
-                    val body = text
-                    scope.launch {
-                        runCatching {
-                            s.api.post("/api/families/${fam.id}/memos", buildJsonObject { put("text", body); put("color", color); target?.let { put("target_id", it) } })
-                            text = ""; reload()
-                        }.onFailure { toast(ctx, errText(it)) }
-                    }
+                    store.addMemo(text.trim(), color, target)
+                    text = ""
                 }, modifier = Modifier.fillMaxWidth()) { Text("貼る") }
             }
         }
@@ -153,8 +144,8 @@ fun MemoTab(ref: FamRef) {
             Surface(
                 color = parseColor(m.color, Color(0xFFFFF3A3)), shape = RoundedCornerShape(4.dp, 4.dp, 18.dp, 4.dp), shadowElevation = 3.dp,
                 modifier = Modifier.rotate(((m.id.hashCode() % 5) - 2) * 0.8f).combinedClickable(
-                    onClick = { scope.launch { runCatching { s.api.patch("/api/memos/${m.id}", buildJsonObject { put("done", m.done == 0) }); reload() } } },
-                    onLongClick = { scope.launch { runCatching { s.api.delete("/api/memos/${m.id}"); reload() } } },
+                    onClick = { store.setMemoDone(m, m.done == 0) },
+                    onLongClick = { store.deleteMemo(m) },
                 ),
             ) {
                 Column(Modifier.padding(12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -180,24 +171,21 @@ fun CalendarTab(ref: FamRef) {
     val fam = ref.family
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    val events = remember { mutableStateListOf<CalEvent>() }
+    val store = remember(s, fam.id) { s.store(fam.id) }
+    val events by store.events.items.collectAsState()
     val month = remember { mutableStateOf(Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1); clearTime() }) }
     var selected by remember { mutableStateOf(Calendar.getInstance().apply { clearTime() }) }
     var adding by remember { mutableStateOf(false) }
 
-    suspend fun reload() = runCatching {
-        val a = month.value.timeInMillis / 1000.0 - 7 * 86400
-        val b = a + 50 * 86400
-        events.clear(); events.addAll(s.api.decode<List<CalEvent>>(s.api.get("/api/families/${fam.id}/events?start=$a&end=$b")["events"]))
-    }
-    LaunchedEffect(fam.id, month.value.timeInMillis) { reload() }
-    LaunchedEffect(fam.id) { s.events.collect { ev -> if (ev.str("family_id") == fam.id && ev.str("type")?.startsWith("event") == true) reload() } }
+    LaunchedEffect(store) { store.events.refresh() }
+    LaunchedEffect(store, month.value.timeInMillis) { store.showMonth(month.value.timeInMillis / 1000.0) }
 
     fun dayKey(c: Calendar) = c.get(Calendar.YEAR) * 1000 + c.get(Calendar.DAY_OF_YEAR)
     val byDay = events.groupBy { e -> dayKey(Calendar.getInstance().apply { timeInMillis = (e.start * 1000).toLong() }) }
     val birthdays = fam.members.filter { it.birthday.isNotBlank() }.associateBy { it.birthday }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { SyncBar(s, store.events.key, store.events.error) }
         item {
             SectionCard {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -222,7 +210,7 @@ fun CalendarTab(ref: FamRef) {
                                         Text("${c.get(Calendar.DAY_OF_MONTH)}", fontWeight = if (today) FontWeight.Bold else FontWeight.Normal,
                                             color = if (today) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                            byDay[dayKey(c)].orEmpty().take(3).forEach { e -> Box(Modifier.size(5.dp).clip(CircleShape).background(parseColor(fam.member(e.user_id)?.color, Mint))) }
+                                            byDay[dayKey(c)].orEmpty().take(3).forEach { e -> Box(Modifier.size(5.dp).clip(CircleShape).background(parseColor(e.user_id?.let { fam.member(it) }?.color, Mint))) }
                                             if (birthdays.containsKey("%02d-%02d".format(c.get(Calendar.MONTH) + 1, c.get(Calendar.DAY_OF_MONTH)))) Text("🎂", fontSize = 8.sp)
                                         }
                                     }
@@ -245,7 +233,7 @@ fun CalendarTab(ref: FamRef) {
         }
         if (list.isEmpty()) item { Text("予定はありません", color = MaterialTheme.colorScheme.onSurfaceVariant) }
         items(list, key = { it.id }) { e ->
-            val m = fam.member(e.user_id)
+            val m = e.user_id?.let { fam.member(it) }
             Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(6.dp, 36.dp).clip(RoundedCornerShape(3.dp)).background(parseColor(m?.color, Mint)))
@@ -254,20 +242,14 @@ fun CalendarTab(ref: FamRef) {
                         Text(fmtDateTime(e.start) + (e.end?.let { " 〜 " + fmtTime(it) } ?: "") + "・" + (m?.label ?: "家族みんな"), style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    if (e.user_id == s.userId || e.user_id == null) IconButton(onClick = { scope.launch { runCatching { s.api.delete("/api/events/${e.id}"); reload() } } }) { Icon(Icons.Default.Delete, "削除") }
+                    if (e.user_id == s.userId || e.user_id == null) IconButton(onClick = { store.deleteEvent(e) }) { Icon(Icons.Default.Delete, "削除") }
                 }
             }
         }
     }
     if (adding) AddEventDialog(selected, onDismiss = { adding = false }) { title, start, end, private, shared ->
         adding = false
-        scope.launch {
-            runCatching {
-                s.api.post("/api/families/${fam.id}/events", buildJsonObject {
-                    put("title", title); put("start", start); end?.let { put("end", it) }; put("private", private); put("shared", shared)
-                }); reload()
-            }.onFailure { toast(ctx, errText(it)) }
-        }
+        store.addEvent(title, start, end, private, shared)
     }
 }
 
@@ -309,13 +291,13 @@ fun TasksTab(ref: FamRef) {
     val fam = ref.family
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
-    val tasks = remember { mutableStateListOf<FamTask>() }
+    val store = remember(s, fam.id) { s.store(fam.id) }
+    val tasks by store.tasks.items.collectAsState()
     var text by remember { mutableStateOf("") }
     var assignee by remember { mutableStateOf<String?>(null) }
-    suspend fun reload() = runCatching { tasks.clear(); tasks.addAll(s.api.decode<List<FamTask>>(s.api.get("/api/families/${fam.id}/tasks")["tasks"])) }
-    LaunchedEffect(fam.id) { reload() }
-    LaunchedEffect(fam.id) { s.events.collect { ev -> if (ev.str("family_id") == fam.id && ev.str("type")?.startsWith("task") == true) reload() } }
+    LaunchedEffect(store) { store.tasks.refresh() }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item { SyncBar(s, store.tasks.key, store.tasks.error) }
         item {
             SectionCard("✅ やること") {
                 OutlinedTextField(text, { text = it }, placeholder = { Text("例: お風呂掃除") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -324,11 +306,8 @@ fun TasksTab(ref: FamRef) {
                     fam.members.take(4).forEach { m -> FilterChip(assignee == m.user_id, { assignee = m.user_id }, label = { Text(m.label) }) }
                 }
                 Button(enabled = text.isNotBlank(), onClick = {
-                    val t = text
-                    scope.launch {
-                        runCatching { s.api.post("/api/families/${fam.id}/tasks", buildJsonObject { put("title", t); assignee?.let { put("assignee_id", it) } }); text = ""; reload() }
-                            .onFailure { toast(ctx, errText(it)) }
-                    }
+                    store.addTask(text.trim(), assignee)
+                    text = ""
                 }, modifier = Modifier.fillMaxWidth()) { Text("追加") }
                 Text("終わらせると、頼んだ人のスマホに「やっておいたよ！」とちびっこが伝えに行きます", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -337,10 +316,10 @@ fun TasksTab(ref: FamRef) {
         items(tasks, key = { it.id }) { t ->
             Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
                 Row(Modifier.padding(horizontal = 6.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(t.done == 1, { d -> scope.launch { runCatching { s.api.patch("/api/tasks/${t.id}", buildJsonObject { put("done", d) }); reload() } } })
+                    Checkbox(t.done == 1, { d -> store.setTaskDone(t, d) })
                     Text(t.title, Modifier.weight(1f), textDecoration = if (t.done == 1) TextDecoration.LineThrough else null)
-                    fam.member(t.assignee_id)?.let { AvatarDot(it, 28.dp) }
-                    IconButton(onClick = { scope.launch { runCatching { s.api.delete("/api/tasks/${t.id}"); reload() } } }) { Icon(Icons.Default.Delete, "削除") }
+                    t.assignee_id?.let { fam.member(it) }?.let { AvatarDot(it, 28.dp) }
+                    IconButton(onClick = { store.deleteTask(t) }) { Icon(Icons.Default.Delete, "削除") }
                 }
             }
         }
@@ -398,5 +377,27 @@ fun HomeIotTab(ref: FamRef, askAi: (String) -> Unit) {
                 }
             }
         }
+    }
+}
+
+/**
+ * Shows what the local-first sync is doing, so nothing fails silently: changes waiting to be sent
+ * (offline) and when the server copy could not be read.
+ */
+@Composable
+fun SyncBar(s: com.daijobu.famichibi.net.HostSession, listKey: String, error: kotlinx.coroutines.flow.StateFlow<String?>) {
+    val ops by s.outbox.ops.collectAsState()
+    val err by error.collectAsState()
+    val online by s.connected.collectAsState()
+    val pending = ops.count { it.list == listKey }
+    if (pending == 0 && err == null && online) return
+    val text = when {
+        pending > 0 && !online -> "📴 オフライン：変更 ${pending} 件は保存済み。つながったら自動で送ります"
+        pending > 0 -> "📤 変更 ${pending} 件を送信中…"
+        !online -> "📴 オフライン：最後に受け取った内容を表示しています"
+        else -> "⚠️ 最新の内容を読み込めませんでした（$err）"
+    }
+    Surface(color = Color(0xFFFFF1D6), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Text(text, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B4A1A))
     }
 }

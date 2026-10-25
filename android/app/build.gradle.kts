@@ -5,6 +5,8 @@ plugins {
 }
 
 android {
+    // JVM unit tests (sync logic) call android.util.Log: let the stubs return defaults instead of throwing
+    testOptions { unitTests.isReturnDefaultValues = true }
     namespace = "com.daijobu.famichibi"
     compileSdk = 36
 
@@ -67,4 +69,5 @@ dependencies {
     implementation(libs.webrtc)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,9 +42,10 @@ fun presenceText(m: Member): String {
 
 @Composable
 fun PresenceStrip(fam: Family) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // one line that scrolls sideways: long names must never wrap letter by letter
+    Row(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         fam.members.forEach { m ->
-            Text("${m.label}${presenceIcon(m)}", style = MaterialTheme.typography.labelSmall, color = parseColor(m.color))
+            Text("${m.label}${presenceIcon(m)}", style = MaterialTheme.typography.labelSmall, color = parseColor(m.color), maxLines = 1, softWrap = false)
         }
     }
 }

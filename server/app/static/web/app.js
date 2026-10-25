@@ -188,9 +188,11 @@ async function openFamily(fid) {
   if (!f) { renderHome(); return; }
   show('view-family');
   renderSidebar();
-  syncCast();
+  // chat history first: the living room's VRMs are big and must not delay it
   const first = f.channels.find((c) => c.kind === 'text');
-  await selectChannel(first ? first.id : null);
+  const opened = selectChannel(first ? first.id : null);
+  syncCast();
+  await opened;
   setTab(S.tab);
   if (!S.home) get(`/api/families/${fid}/home`).then((h) => { S.home = h; if (S.tab === 'home') renderHomeTab(); }).catch(() => {});
 }
@@ -564,9 +566,11 @@ async function renderSettings() {
       <div class="inline"><span>おやすみ時間</span><input type="time" id="m-qs" value="${esc(me.quiet_start || '')}"><span>〜</span><input type="time" id="m-qe" value="${esc(me.quiet_end || '')}"></div>
       <p class="muted small">おやすみ時間中は静かに届けます。「迎えに来て」などの急ぎの連絡だけは届きます。</p>
       <button class="btn primary" id="m-save">保存</button> <button class="btn danger" id="m-leave">この家族から抜ける</button></section>
-    <section><h3>💌 招待（QR / NFCカード）</h3>
-      <p class="muted small">呼び名とアバターを先に決めておくと、おじいちゃん・おばあちゃんはカードをかざす／QRを読むだけで参加できます。Androidアプリから NFC カードに書き込めます。</p>
-      <div class="inline"><input id="i-name" placeholder="名前（例: よしこ）"><input id="i-nick" placeholder="呼び名（例: 祖母）"><select id="i-avatar"><option value="">アバター自動</option>${avOpts('')}</select><button class="btn primary" id="i-go">招待を作る</button></div>
+    <section><h3>💌 招待リンク（LINE・メールで送れる）</h3>
+      <p class="muted small">リンクを開くと招待ページが表示され、「アプリで参加」か「ブラウザでチャット」を選べます。名前・呼び名を入れると、その人専用（1回だけ使える）の招待になります。</p>
+      <div class="inline"><input id="i-name" placeholder="名前（任意・例: よしこ）"><input id="i-nick" placeholder="呼び名（任意・例: 祖母）"><select id="i-avatar"><option value="">アバター自動</option>${avOpts('')}</select>
+        <select id="i-exp"><option value="1">1時間</option><option value="24">24時間</option><option value="168" selected>7日間</option><option value="720">30日間</option><option value="0">期限なし</option></select>
+        <button class="btn primary" id="i-go">招待リンクを作る</button></div>
       <div id="i-out"></div>
       <p class="muted small">招待コード: <b>${esc(f.code)}</b></p></section>
     <section><h3>✦ AIちびっこ ${owner ? '' : '<span class="muted small">（オーナーのみ変更可）</span>'}</h3>
@@ -954,6 +958,7 @@ function wire() {
   $('#pane-settings').addEventListener('click', async (e) => {
     const id = e.target.id;
     if (['p-save', 'm-save', 'f-save'].includes(id)) saveSettings(id);
+    else if (id === 'i-copy') { navigator.clipboard?.writeText(e.target.dataset.url).then(() => toast('コピーしました'), () => prompt('コピーしてください', e.target.dataset.url)); }
     else if (id === 'p-test') living.speak(S.user.id, 'こんにちは！この声で家族に届けるよ', parseFloat($('#p-pitch').value));
     else if (id === 'logout') { if (confirm('ログアウトしますか？（このブラウザのアカウント情報が消えます）')) { auth.token = ''; location.reload(); } }
     else if (id === 'm-leave') {
@@ -961,9 +966,12 @@ function wire() {
       try { await del(`/api/families/${S.fid}/members/${S.user.id}`); } catch (err) { fail(err); }
     } else if (id === 'i-go') {
       try {
-        const r = await post(`/api/families/${S.fid}/invites`, { preset_name: $('#i-name').value.trim(), preset_nickname: $('#i-nick').value.trim(), preset_avatar: $('#i-avatar').value });
-        $('#i-out').innerHTML = `<div class="qr-box"><img src="/api/qr?data=${encodeURIComponent(r.link)}" alt="QR"><div><div><b>アプリ用リンク（NFCに書き込み可）</b></div><code>${esc(r.link)}</code>
-          <div style="margin-top:6px"><b>ブラウザ用</b></div><code><a href="${esc(r.web)}" target="_blank">${esc(r.web)}</a></code></div></div>`;
+        const r = await post(`/api/families/${S.fid}/invites`, { preset_name: $('#i-name').value.trim(), preset_nickname: $('#i-nick').value.trim(), preset_avatar: $('#i-avatar').value, expires_hours: parseFloat($('#i-exp').value) });
+        const until = r.expires_at ? `${new Date(r.expires_at * 1000).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} まで有効` : '期限なし';
+        $('#i-out').innerHTML = `<div class="qr-box"><img src="${esc(r.qr)}" alt="QR"><div><div><b>招待リンク</b>（${until}${r.single_use ? '・1回だけ' : ''}）</div>
+          <code><a href="${esc(r.url)}" target="_blank">${esc(r.url)}</a></code>
+          <div style="margin-top:8px"><button class="btn" id="i-copy" data-url="${esc(r.url)}">リンクをコピー</button></div>
+          <div class="muted small" style="margin-top:6px">NFCカード用（アプリ直接）: <code>${esc(r.link)}</code></div></div></div>`;
       } catch (err) { fail(err); }
     }
   });
