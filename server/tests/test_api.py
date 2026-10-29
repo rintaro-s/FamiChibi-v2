@@ -42,6 +42,10 @@ def test_flow():
         # memo with natural language time
         m = c.post(f"/api/families/{fid}/memos", json={"text": "明日16時：カレー作っておいたから食べてね"}, headers=auth(b["token"])).json()["memo"]
         assert m["text"] == "カレー作っておいたから食べてね" and m["notify_at"] and m["motion"] == "dance"
+        # appliances are an optional extension: off for a new family, the AI explains how to turn it on
+        r = c.post(f"/api/families/{fid}/ai", json={"text": "電気消して"}, headers=auth(a["token"])).json()["message"]
+        assert "拡張機能" in r["text"], r
+        assert c.patch(f"/api/families/{fid}", json={"iot_enabled": True}, headers=auth(a["token"])).status_code == 200
         # AI rule engine: lights via MCP
         HOME.set("living_light", on=True)
         r = c.post(f"/api/families/{fid}/ai", json={"text": "電気消して"}, headers=auth(a["token"])).json()["message"]

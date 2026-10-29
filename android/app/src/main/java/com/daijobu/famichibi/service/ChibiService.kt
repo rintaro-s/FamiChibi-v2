@@ -16,6 +16,8 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.daijobu.famichibi.FamRef
 import com.daijobu.famichibi.Graph
+import kotlinx.coroutines.flow.distinctUntilChanged
+import com.daijobu.famichibi.external.ExternalChats
 import com.daijobu.famichibi.LockScreenActivity
 import com.daijobu.famichibi.MainActivity
 import com.daijobu.famichibi.data.Silent
@@ -100,6 +102,8 @@ class ChibiService : Service(), OverlayController.Handler {
                 list.filter { observed.add(it) }.forEach { s -> jobs += Graph.scope.launch { s.events.collect { onEvent(s, it) } } }
             }
         }
+        // LINE / SMS messages from linked family members, brought by their chibis (on-device only)
+        jobs += Graph.scope.launch { ExternalChats.incoming.collect { dispatch(it.ref, it.cue, external = true) } }
         jobs += Graph.scope.launch {
             Graph.appInForeground.collect { fg ->
                 overlay.setPausedForApp(fg)
@@ -121,9 +125,11 @@ class ChibiService : Service(), OverlayController.Handler {
         // Silent mode: the resident chibi steps out (and comes back when it ends); the status notification shows it.
         jobs += Graph.scope.launch {
             var first = true
-            Silent.on.collect { on ->
+            kotlinx.coroutines.flow.combine(Silent.on, Graph.prefs.settings) { on, st -> on to st.silentShowChibi }
+                .distinctUntilChanged().collect { (on, showChibi) ->
                 notifier.updateService(on)
-                if (on) { overlay.hide(); Graph.speech.stop() }
+                if (on) Graph.speech.stop()
+                if (on && !showChibi) overlay.hide()
                 else if (!first && Graph.prefs.settings.value.overlay && Graph.prefs.settings.value.resident && !Graph.appInForeground.value) {
                     val ref = Graph.famRef(Graph.prefs.lastFamilyId) ?: Graph.families.value.firstOrNull()
                     ref?.let { r -> resolveActor(ChibiCue(from = "ai", familyId = r.family.id))?.let { overlay.showResident(it) } }
@@ -192,17 +198,20 @@ class ChibiService : Service(), OverlayController.Handler {
         dispatch(famRef, cue)
     }
 
-    private fun dispatch(ref: FamRef, original: ChibiCue) {
+    /** @param external the message came from another chat app's notification, which is still there: post no second one */
+    private fun dispatch(ref: FamRef, original: ChibiCue, external: Boolean = false) {
         val settings = Graph.prefs.settings.value
         // Silent mode: keep it as a soundless notification only (urgent ones may break through).
         val muted = Silent.mutes(original.urgent)
-        val cue = if (muted) original.copy(quiet = true, urgent = false) else original
+        // "音だけオフ": the chibi still delivers (urgent ones still look urgent), but the notification makes no sound or vibration
+        val soundOnly = Silent.soundOnly()
+        val cue = if (muted) original.copy(quiet = true, urgent = false) else if (soundOnly) original.copy(quiet = true) else original
         val inThisFamily = Graph.appInForeground.value && Graph.foregroundFamily.value == cue.familyId
         val sender = ref.family.member(cue.from)?.label ?: ref.family.ai_name
         val locked = isLocked()
         LockBoard.add(cue)
-        if (!inThisFamily && cue.kind != "acked") {
-            notifier.post(cue, sender, ref.family.name, fullScreen = cue.urgent && locked && settings.lockscreen)
+        if (!inThisFamily && cue.kind != "acked" && !external) {
+            notifier.post(if (soundOnly) cue.copy(urgent = false) else cue, sender, ref.family.name, fullScreen = cue.urgent && locked && settings.lockscreen)
         }
         if (muted) return
         if (locked) {
@@ -224,7 +233,7 @@ class ChibiService : Service(), OverlayController.Handler {
         } ?: emptyList()
         val title = ev.str("title") ?: "🎉 パーティー！"
         LockBoard.party = LockBoard.Party(ref.family.id, title, lines, System.currentTimeMillis())
-        if (Silent.isOn()) return  // the party waits on the lock board until silent mode ends
+        if (Silent.hidesChibi()) return  // the party waits on the lock board until silent mode ends
         if (isLocked()) { wakeToLockScreen(); return }
         if (Graph.appInForeground.value && Graph.foregroundFamily.value == ref.family.id) return
         overlay.party(title, members.take(5), lines)
@@ -234,6 +243,19 @@ class ChibiService : Service(), OverlayController.Handler {
     override fun resolveActor(cue: ChibiCue): ActorInfo? = actorFor(cue.familyId, cue.from)
 
     override fun onReply(cue: ChibiCue, text: String) {
+        if (cue.kind == "external_who") { // "who is this LINE sender?" answered with a member name
+            ExternalChats.answerWho(cue, text)
+            LockBoard.remove(cue)
+            overlay.drop(cue.messageId)
+            return
+        }
+        if (cue.kind == "external") {
+            // answer in LINE / SMS itself, through the notification's reply action
+            if (!ExternalChats.reply(this, cue, text)) ExternalChats.open(cue)
+            LockBoard.remove(cue)
+            overlay.drop(cue.messageId)
+            return
+        }
         val ref = Graph.famRef(cue.familyId) ?: return
         Graph.scope.launch {
             runCatching {
@@ -255,12 +277,14 @@ class ChibiService : Service(), OverlayController.Handler {
     }
 
     override fun onOpen(cue: ChibiCue?) {
+        if (cue?.kind == "external" && ExternalChats.open(cue)) return // open the conversation in the chat app
         val i = Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         cue?.let { i.putExtra("family", it.familyId).putExtra("channel", it.channelId) }
         startActivity(i)
     }
 
     override fun onSeen(cue: ChibiCue) {
+        if (cue.kind.startsWith("external")) { overlay.drop(cue.messageId); LockBoard.remove(cue); return } // nothing to tell the server
         if (cue.messageId == 0L) return
         val ref = Graph.famRef(cue.familyId) ?: return
         Graph.scope.launch { ref.session.ack(cue.messageId) }
@@ -292,7 +316,7 @@ class ChibiService : Service(), OverlayController.Handler {
     private fun registerScreen() {
         val r = object : BroadcastReceiver() {
             override fun onReceive(c: Context, i: Intent) {
-                if (Silent.isOn()) return
+                if (Silent.hidesChibi()) return
                 if (i.action == Intent.ACTION_SCREEN_ON && LockBoard.hasPending() && Graph.prefs.settings.value.lockscreen && isLocked()) {
                     wakeToLockScreen()
                 }

@@ -173,7 +173,7 @@ private fun LockCard(c: ChibiCue) {
                 c.replies.take(3).forEach { r ->
                     OutlinedButton(onClick = {
                         val svc = ChibiService.instance
-                        if (svc != null) svc.onReply(c, r) else Graph.scope.launch { Graph.famRef(c.familyId)?.session?.sendMessage(c.channelId, r) }
+                        if (svc != null) svc.onReply(c, r) else if (c.kind != "external") Graph.scope.launch { Graph.famRef(c.familyId)?.session?.sendMessage(c.channelId, r) }
                         LockBoard.remove(c)
                     }) { Text(r) }
                 }

@@ -14,9 +14,11 @@ class FamiApp : Application() {
         super.onCreate()
         CrashLog.install(this)
         Graph.init(this)
+        com.daijobu.famichibi.external.ExternalChats.ensureBound(this)
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 Graph.appInForeground.value = true
+                com.daijobu.famichibi.external.ExternalChats.ensureBound(this@FamiApp)
                 Graph.sessions.value.forEach { it.reconnectNow() }
             }
             override fun onStop(owner: LifecycleOwner) { Graph.appInForeground.value = false }

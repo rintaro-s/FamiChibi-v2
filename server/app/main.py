@@ -503,12 +503,15 @@ def get_avatar(name: str):
 # ---------------------------------------------------------------------------------------------
 # families
 # ---------------------------------------------------------------------------------------------
-def make_family(owner: dict, name: str, emoji: str = "🏠", nickname: str = "") -> dict:
+def make_family(owner: dict, name: str, emoji: str = "🏠", nickname: str = "", extensions: bool = False) -> dict:
+    """A new family starts as "just the family and their chibis". Smart-home control and free AI chat are
+    optional extensions (family tab → 拡張機能); the AI chibi itself stays, as the family's helper
+    (watching over, reminders, digests, asking for you). The demo family turns the extensions on to show them."""
     fid = new_id("f_")
     avs = db.all("SELECT id FROM avatars WHERE builtin=1 ORDER BY id")
     fam = {"id": fid, "name": name.strip()[:30] or "わが家", "emoji": emoji or "🏠", "code": new_code(), "owner_id": owner["id"],
-           "ai_enabled": 1, "iot_enabled": 1, "ai_name": "ちびAI", "ai_avatar": "builtin_AliciaSolid" if any(a["id"] == "builtin_AliciaSolid" for a in avs) else (avs[0]["id"] if avs else ""),
-           "settings": {"ollama_url": "http://127.0.0.1:11434", "model": "qwen3.5:9b", "llm_enabled": True,
+           "ai_enabled": 1, "iot_enabled": int(extensions), "ai_name": "ちびAI", "ai_avatar": "builtin_AliciaSolid" if any(a["id"] == "builtin_AliciaSolid" for a in avs) else (avs[0]["id"] if avs else ""),
+           "settings": {"ollama_url": "http://127.0.0.1:11434", "model": "qwen3.5:9b", "llm_enabled": extensions,
                         "mcp_servers": [{"name": "home", "type": "builtin"}]}, "created_at": now()}
     db.insert("families", fam)
     db.insert("members", {"family_id": fid, "user_id": owner["id"], "role": "owner", "nickname": nickname, "joined_at": now()})
@@ -1092,7 +1095,7 @@ async def ai_status(fid: str, user: dict = Depends(current_user)):
     async with MCPSession(s.get("mcp_servers") if fam["iot_enabled"] else []) as mcp:
         tools = [{"server": t.server, "name": t.name, "description": t.description} for t in mcp.tools]
         errors = mcp.errors
-    return {"llm": llm, "model": s.get("model"), "ollama_url": s.get("ollama_url"), "engine": "llm" if llm and s.get("llm_enabled", True) else "rule",
+    return {"llm": llm, "model": s.get("model"), "ollama_url": s.get("ollama_url"), "engine": "llm" if llm and s.get("llm_enabled", False) else "rule",
             "mcp_tools": tools, "mcp_errors": errors}
 
 
@@ -1130,7 +1133,7 @@ def demo_user(fid: str, nickname: str) -> dict | None:
 
 @app.post("/api/demo/seed")
 async def demo_seed(user: dict = Depends(current_user)):
-    fam = make_family(user, "しげの家", "🏡", "兄")
+    fam = make_family(user, "しげの家", "🏡", "兄", extensions=True)
     fid = fam["id"]
     used = {av for _, _, av, *_ in DEMO_MEMBERS} | {fam["ai_avatar"]}
     if user["avatar"] in used:  # give the user a look nobody else in the demo family has

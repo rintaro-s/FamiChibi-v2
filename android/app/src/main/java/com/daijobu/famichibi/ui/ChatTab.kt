@@ -136,7 +136,7 @@ fun ChatTab(ref: FamRef, channelId: String, onChannel: (String) -> Unit, openVoi
 
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), state = listState, contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (messages.isEmpty()) item {
-                EmptyHint(if (isAiChannel) "🤖" else "💬", if (isAiChannel) "ちびAIに話しかけてみよう\n「電気消して」「土曜みんな空いてる？」「何ができる？」" else "まだメッセージはありません")
+                EmptyHint(if (isAiChannel) "🤖" else "💬", if (isAiChannel) "ちびAIに話しかけてみよう\n「土曜みんな空いてる？」「見逃した連絡まとめて」「何ができる？」" else "まだメッセージはありません")
             }
             items(messages, key = { it.id }) { m -> MessageItem(fam, m, mine = m.user_id == s.userId, me = s.userId) }
             typing[channelId]?.let { (uid, at) ->
@@ -156,7 +156,7 @@ fun ChatTab(ref: FamRef, channelId: String, onChannel: (String) -> Unit, openVoi
         }
         if (isAiChannel) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf("電気消して", "今度の土曜日、みんな空いてる？", "見逃した連絡まとめて", "何ができる？").forEach { q -> AssistChip(onClick = { send(q) }, label = { Text(q) }) }
+                listOfNotNull(if (ref.family.iot_enabled) "電気消して" else null, "今度の土曜日、みんな空いてる？", "見逃した連絡まとめて", "何ができる？").forEach { q -> AssistChip(onClick = { send(q) }, label = { Text(q) }) }
             }
         }
         Surface(tonalElevation = 3.dp) {
@@ -182,7 +182,7 @@ fun ChatTab(ref: FamRef, channelId: String, onChannel: (String) -> Unit, openVoi
                         text = it
                         s.send(kotlinx.serialization.json.buildJsonObject { put("type", kotlinx.serialization.json.JsonPrimitive("typing")); put("channel_id", kotlinx.serialization.json.JsonPrimitive(channelId)) })
                     },
-                    placeholder = { Text(if (recording) "録音中… もう一度押すと送信" else if (isAiChannel) "ちびAIにお願い（例: 電気消して）" else "メッセージ") },
+                    placeholder = { Text(if (recording) "録音中… もう一度押すと送信" else if (isAiChannel) "ちびAIにお願い（例: 土曜みんな空いてる？）" else "メッセージ") },
                     modifier = Modifier.weight(1f), shape = RoundedCornerShape(24.dp), maxLines = 4,
                     colors = TextFieldDefaults.colors(focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
                     trailingIcon = {

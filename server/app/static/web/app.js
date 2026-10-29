@@ -208,6 +208,10 @@ function syncCast() {
 function renderSidebar() {
   const f = fam();
   if (!f) return;
+  // "おうち" is an optional extension: only show its tab when it is on
+  const homeBtn = $('#tabs button[data-tab="home"]');
+  if (homeBtn) homeBtn.hidden = !f.iot_enabled;
+  if (!f.iot_enabled && S.tab === 'home') setTab('chat');
   $('#fam-emoji').textContent = f.emoji; $('#fam-name').textContent = f.name;
   $('#fam-emoji-m').textContent = f.emoji; $('#fam-name-m').textContent = f.name;
   $('#fam-code').textContent = f.code;
@@ -242,7 +246,7 @@ async function selectChannel(cid) {
   if (S.tab !== 'chat') setTab('chat');
   $('#pane-chat').hidden = false;
   $('#chan-name').textContent = (c.name === 'ちびAI' ? '✦ ' : '# ') + c.name;
-  $('#msg-in').placeholder = c.name === 'ちびAI' ? 'ちびAIにお願い（例: 電気消して / 土曜みんな空いてる？）' : 'メッセージ（@ちびAI で AIに頼む）';
+  $('#msg-in').placeholder = c.name === 'ちびAI' ? 'ちびAIにお願い（例: 土曜みんな空いてる？ / 見逃した連絡まとめて）' : 'メッセージ（@ちびAI で AIに頼む）';
   if (!S.messages.has(cid)) {
     $('#messages').innerHTML = '<div class="empty">読み込み中…</div>';
     try {
@@ -313,7 +317,7 @@ function renderQuick() {
   const c = channel();
   if (!c) { q.innerHTML = ''; return; }
   let chips = [];
-  if (c.name === 'ちびAI') chips = ['何ができる？', '電気消して', '今度の土曜日、みんな空いてる？', '見逃した連絡まとめて'];
+  if (c.name === 'ちびAI') chips = ['何ができる？', ...(fam()?.iot_enabled ? ['電気消して'] : []), '今度の土曜日、みんな空いてる？', '見逃した連絡まとめて'];
   else {
     const list = S.messages.get(S.cid) || [];
     const last = list[list.length - 1];
@@ -573,12 +577,15 @@ async function renderSettings() {
         <button class="btn primary" id="i-go">招待リンクを作る</button></div>
       <div id="i-out"></div>
       <p class="muted small">招待コード: <b>${esc(f.code)}</b></p></section>
-    <section><h3>✦ AIちびっこ ${owner ? '' : '<span class="muted small">（オーナーのみ変更可）</span>'}</h3>
-      <div id="ai-status" class="muted small">状態を確認中…</div>
-      <label class="inline"><input type="checkbox" id="f-ai" ${f.ai_enabled ? 'checked' : ''}> AIちびっこを使う</label>
-      <label class="inline"><input type="checkbox" id="f-iot" ${f.iot_enabled ? 'checked' : ''}> IoT連携（MCP）を使う</label>
+    <section><h3>✦ ちびAI（家族のお手伝い係） ${owner ? '' : '<span class="muted small">（オーナーのみ変更可）</span>'}</h3>
+      <p class="muted small">毎朝の見守りのあいさつ、本人に代わりに聞く、見逃した連絡のまとめ、リマインド。家族と家族の間をつなぐ係です。</p>
+      <label class="inline"><input type="checkbox" id="f-ai" ${f.ai_enabled ? 'checked' : ''}> ちびAIをつかう</label>
       <div class="inline"><span>名前</span><input id="f-ainame" value="${esc(f.ai_name)}" style="width:120px"><span>アバター</span><select id="f-aiav">${avOpts(f.ai_avatar)}</select></div>
-      <label class="inline"><input type="checkbox" id="f-llm" ${s.llm_enabled !== false ? 'checked' : ''}> LLMを使う（使えないときは自動でルールエンジン）</label>
+      <h3 style="margin-top:18px">🧩 拡張機能（オプション）</h3>
+      <p class="muted small">FamiChibiの中心は「家族とちびっこ」。ここから先は、必要な家庭だけがONにする追加機能です。</p>
+      <label class="inline"><input type="checkbox" id="f-iot" ${f.iot_enabled ? 'checked' : ''}> 💡 家電操作（「おうち」タブ・ちびAIに「電気消して」）</label>
+      <label class="inline"><input type="checkbox" id="f-llm" ${s.llm_enabled === true ? 'checked' : ''}> 💬 ちびAIと雑談（LLM・Ollama が必要）</label>
+      <div id="ai-status" class="muted small">状態を確認中…</div>
       <div class="inline"><span>Ollama URL</span><input id="f-ollama" value="${esc(s.ollama_url || '')}" style="flex:1"><span>モデル</span><input id="f-model" value="${esc(s.model || '')}" style="width:140px"></div>
       <div class="field"><span>MCPサーバー（JSON）</span><textarea id="f-mcp">${esc(JSON.stringify(s.mcp_servers || [], null, 2))}</textarea></div>
       <p class="muted small">例: {"name":"ha","type":"http","url":"http://homeassistant.local:8086/mcp"} / {"name":"x","type":"stdio","command":"uvx","args":["ha-mcp"]}</p>

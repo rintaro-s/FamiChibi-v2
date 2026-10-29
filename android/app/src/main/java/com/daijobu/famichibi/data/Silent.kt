@@ -12,8 +12,11 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * サイレントモード: ちびっこは画面に出てこず、読み上げ・通知音もなし（通知は無音で残る）。
- * 急ぎの連絡だけは届けるかどうかを選べる。時間指定で自動的に解除される。
+ * サイレントモード（時間指定で自動的に解除）。2種類:
+ *  - ちびっこもお休み: ちびっこは画面に出てこず、読み上げ・通知音もなし（通知は無音で残る）。
+ *    急ぎの連絡だけは届けるかどうかを選べる。
+ *  - 音だけオフ（silentShowChibi）: ちびっこはいつも通り歩いてきて吹き出しで伝えるが、
+ *    読み上げ・ボイス再生・通知音・バイブは急ぎの連絡も含めて一切なし。
  */
 object Silent {
     const val FOREVER = Long.MAX_VALUE
@@ -58,8 +61,16 @@ object Silent {
         _on.value = false
     }
 
-    /** Should this delivery stay silent? Urgent ones can break through (setting). */
-    fun mutes(urgent: Boolean): Boolean = isOn() && !(urgent && Graph.prefs.settings.value.silentAllowUrgent)
+    /** "音だけオフ": chibis still come, but nothing makes a sound. */
+    fun soundOnly(): Boolean = isOn() && Graph.prefs.settings.value.silentShowChibi
+
+    /** Are the chibis off screen right now? */
+    fun hidesChibi(): Boolean = isOn() && !Graph.prefs.settings.value.silentShowChibi
+
+    /** Should this delivery be held back (no chibi, soundless notification)? Urgent ones can break through (setting). */
+    fun mutes(urgent: Boolean): Boolean = hidesChibi() && !(urgent && Graph.prefs.settings.value.silentAllowUrgent)
+
+    fun setShowChibi(show: Boolean) = Graph.prefs.updateSettings { it.copy(silentShowChibi = show) }
 
     fun label(): String {
         val u = Graph.prefs.settings.value.silentUntil

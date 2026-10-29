@@ -102,7 +102,7 @@ class OverlayController(private val ctx: Context, private val cb: Handler) {
 
     /** Show a resident chibi idling in the corner without a message. */
     fun showResident(actor: ActorInfo) {
-        if (!canDraw() || state != State.HIDDEN || com.daijobu.famichibi.data.Silent.isOn()) return
+        if (!canDraw() || state != State.HIDDEN || com.daijobu.famichibi.data.Silent.hidesChibi()) return
         actors[actor.id] = actor
         scope.launch {
             ensureWindow()
@@ -112,7 +112,7 @@ class OverlayController(private val ctx: Context, private val cb: Handler) {
     }
 
     fun party(title: String, members: List<ActorInfo>, lines: List<Pair<String, String>>) {
-        if (!canDraw() || com.daijobu.famichibi.data.Silent.isOn()) return
+        if (!canDraw() || com.daijobu.famichibi.data.Silent.hidesChibi()) return
         queue.clear()
         worker?.cancel()
         scope.launch { runParty(title, members, lines) }

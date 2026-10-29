@@ -34,6 +34,11 @@ data class Settings(
     val sharePresence: Boolean = true,
     val silentUntil: Long = 0,            // サイレントモード（epoch ms、0=オフ、Long.MAX=解除するまで）
     val silentAllowUrgent: Boolean = true, // サイレント中でも「急ぎ」の連絡は届ける
+    val silentShowChibi: Boolean = false,  // サイレント中もちびっこは出す（音だけ一切出さない）
+    // LINE などの通知をちびっこが届ける（端末内だけで処理。本文は保存も送信もしない）
+    val externalChats: Boolean = false,
+    val externalLinks: Map<String, String> = emptyMap(), // "アプリ|送り主の名前" -> "家族ID|メンバーID"
+    val externalSeen: List<String> = emptyList(),         // 最近通知が来た送り主（紐付け画面用、名前だけ）
 )
 
 class Prefs(context: Context) {

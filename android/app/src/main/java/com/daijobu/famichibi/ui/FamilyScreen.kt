@@ -44,7 +44,8 @@ import com.daijobu.famichibi.Graph
 import com.daijobu.famichibi.net.ChibiCue
 import kotlinx.coroutines.launch
 
-val FamilyTabs = listOf("チャット", "冷蔵庫メモ", "カレンダー", "やること", "おうち", "家族")
+/** Tabs of the family screen. "おうち" (smart home) is an optional extension and only shows when it is turned on. */
+fun familyTabs(iot: Boolean) = listOfNotNull("チャット", "冷蔵庫メモ", "カレンダー", "やること", if (iot) "おうち" else null, "家族")
 
 @Composable
 fun FamilyScreen(familyId: String, initialChannel: String?, back: () -> Unit, openVoice: (String) -> Unit) {
@@ -55,7 +56,7 @@ fun FamilyScreen(familyId: String, initialChannel: String?, back: () -> Unit, op
         return
     }
     val fam = ref.family
-    var tab by rememberSaveable { mutableIntStateOf(0) }
+    var tabName by rememberSaveable { mutableStateOf("チャット") }
     var roomOpen by rememberSaveable { mutableStateOf(true) }
     val imeVisible = androidx.compose.foundation.layout.WindowInsets.ime.getBottom(androidx.compose.ui.platform.LocalDensity.current) > 0
     var tapped by remember { mutableStateOf<String?>(null) }
@@ -71,13 +72,19 @@ fun FamilyScreen(familyId: String, initialChannel: String?, back: () -> Unit, op
     }
 
     val onStageReply: (ChibiCue, String) -> Unit = { cue, text ->
-        Graph.scope.launch {
-            runCatching {
-                if (cue.kind == "ask" && cue.askId.isNotBlank()) ref.session.answerAsk(cue.askId, text)
-                else ref.session.sendMessage(cue.channelId.ifBlank { channelId }, text)
-                if (cue.messageId != 0L) ref.session.ack(cue.messageId)
+        when (cue.kind) {
+            // a LINE / SMS message: answer in that app, or say who the sender is
+            "external_who" -> com.daijobu.famichibi.external.ExternalChats.answerWho(cue, text)
+            "external" -> { com.daijobu.famichibi.external.ExternalChats.reply(toastCtx, cue, text) }
+            else -> Graph.scope.launch {
+                runCatching {
+                    if (cue.kind == "ask" && cue.askId.isNotBlank()) ref.session.answerAsk(cue.askId, text)
+                    else ref.session.sendMessage(cue.channelId.ifBlank { channelId }, text)
+                    if (cue.messageId != 0L) ref.session.ack(cue.messageId)
+                }
             }
         }
+        Unit
     }
 
     val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -100,18 +107,20 @@ fun FamilyScreen(familyId: String, initialChannel: String?, back: () -> Unit, op
     val room: @Composable (Modifier) -> Unit = { m -> LivingRoom(ref, m, onReply = onStageReply, onTapActor = { tapped = it }) }
     val content: @Composable (Modifier) -> Unit = { m ->
         Column(m) {
-            PrimaryScrollableTabRow(selectedTabIndex = tab, edgePadding = 8.dp, containerColor = MaterialTheme.colorScheme.background) {
-                FamilyTabs.forEachIndexed { i, t ->
-                    Tab(selected = tab == i, onClick = { tab = i }, text = { Text(t, fontWeight = if (tab == i) FontWeight.Bold else FontWeight.Normal) })
+            val tabs = familyTabs(fam.iot_enabled)
+            val current = tabName.takeIf { it in tabs } ?: "チャット" // e.g. "おうち" after the extension was turned off
+            PrimaryScrollableTabRow(selectedTabIndex = tabs.indexOf(current), edgePadding = 8.dp, containerColor = MaterialTheme.colorScheme.background) {
+                tabs.forEach { t ->
+                    Tab(selected = current == t, onClick = { tabName = t }, text = { Text(t, fontWeight = if (current == t) FontWeight.Bold else FontWeight.Normal) })
                 }
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                when (tab) {
-                    0 -> ChatTab(ref, channelId, onChannel = { channelId = it }, openVoice = openVoice)
-                    1 -> MemoTab(ref)
-                    2 -> CalendarTab(ref)
-                    3 -> TasksTab(ref)
-                    4 -> HomeIotTab(ref) { cmd -> tab = 0; channelId = fam.aiChannel?.id ?: channelId; Graph.scope.launch { runCatching { ref.session.sendMessage(channelId, cmd) } } }
+                when (current) {
+                    "チャット" -> ChatTab(ref, channelId, onChannel = { channelId = it }, openVoice = openVoice)
+                    "冷蔵庫メモ" -> MemoTab(ref)
+                    "カレンダー" -> CalendarTab(ref)
+                    "やること" -> TasksTab(ref)
+                    "おうち" -> HomeIotTab(ref) { cmd -> tabName = "チャット"; channelId = fam.aiChannel?.id ?: channelId; Graph.scope.launch { runCatching { ref.session.sendMessage(channelId, cmd) } } }
                     else -> FamilyTab(ref)
                 }
             }

@@ -84,7 +84,7 @@ fun SettingsScreen(back: () -> Unit, addHost: () -> Unit) {
             item {
                 val silentOn by com.daijobu.famichibi.data.Silent.on.collectAsState()
                 SectionCard("🌙 サイレントモード") {
-                    Text("会議中・授業中・寝るときに。ちびっこは画面に出てこず、読み上げも通知音もなし。連絡は音なしの通知として残ります。",
+                    Text("会議中・授業中・寝るときに。読み上げも通知音もなし。連絡は音なしの通知として残ります。",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Toggle("サイレントモード", if (silentOn) com.daijobu.famichibi.data.Silent.label() else "オフ", silentOn) {
                         if (it) com.daijobu.famichibi.data.Silent.enable(60) else com.daijobu.famichibi.data.Silent.disable()
@@ -93,9 +93,11 @@ fun SettingsScreen(back: () -> Unit, addHost: () -> Unit) {
                         com.daijobu.famichibi.data.Silent.presets.forEach { (l, m) -> AssistChip(onClick = { com.daijobu.famichibi.data.Silent.enable(m) }, label = { Text(l) }) }
                         AssistChip(onClick = { com.daijobu.famichibi.data.Silent.enableUntilMorning() }, label = { Text("明日の朝まで") })
                     }
-                    Toggle("急ぎの連絡だけは届ける", "「迎えに来て」「至急」などはサイレント中でもちびっこが知らせます", s.silentAllowUrgent) { upd { st -> st.copy(silentAllowUrgent = it) } }
+                    Toggle("ちびっこは出す（音だけオフ）", "サイレント中もちびっこは歩いてきて吹き出しで伝えます。読み上げ・ボイス・通知音・バイブは急ぎの連絡も含めて一切なし", s.silentShowChibi) { upd { st -> st.copy(silentShowChibi = it) } }
+                    if (!s.silentShowChibi) Toggle("急ぎの連絡だけは届ける", "「迎えに来て」「至急」などはサイレント中でもちびっこが知らせます", s.silentAllowUrgent) { upd { st -> st.copy(silentAllowUrgent = it) } }
                 }
             }
+            item { ExternalChatsSection() }
             item {
                 SectionCard("🔊 読み上げ・文字") {
                     Toggle("ちびっこがしゃべる（読み上げ）", "家族ごとに声の高さが変わります", s.tts) { upd { st -> st.copy(tts = it) } }

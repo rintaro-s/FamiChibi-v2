@@ -47,6 +47,11 @@ fun SilentButton() {
                 HorizontalDivider()
             }
             Text("🌙 サイレントモード", style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
+            val showChibi = com.daijobu.famichibi.Graph.prefs.settings.collectAsState().value.silentShowChibi
+            // which kind: chibis rest too, or they still come and only the sound is off
+            DropdownMenuItem(text = { Text((if (showChibi) "○" else "●") + " ちびっこもお休み") }, onClick = { Silent.setShowChibi(false) })
+            DropdownMenuItem(text = { Text((if (showChibi) "●" else "○") + " 音だけオフ（ちびっこは出る）") }, onClick = { Silent.setShowChibi(true) })
+            HorizontalDivider()
             Silent.presets.forEach { (label, m) -> DropdownMenuItem(text = { Text(label) }, onClick = { Silent.enable(m); open = false }) }
             DropdownMenuItem(text = { Text("明日の朝7時まで") }, onClick = { Silent.enableUntilMorning(); open = false })
             DropdownMenuItem(text = { Text("オフにするまで") }, onClick = { Silent.enable(null); open = false })
@@ -61,7 +66,8 @@ fun SilentBanner(modifier: Modifier = Modifier) {
     if (!on) return
     Surface(color = Night.copy(alpha = .12f), shape = RoundedCornerShape(14.dp), modifier = modifier.fillMaxWidth()) {
         Row(Modifier.padding(start = 14.dp, end = 4.dp, top = 2.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text("🌙 サイレント中（${Silent.label()}）ちびっこはお休み、通知は音なし", color = Night, fontWeight = FontWeight.Bold,
+            val showChibi = com.daijobu.famichibi.Graph.prefs.settings.collectAsState().value.silentShowChibi
+            Text(if (showChibi) "🔇 音だけオフ（${Silent.label()}）ちびっこは出ますが、音は一切出しません" else "🌙 サイレント中（${Silent.label()}）ちびっこはお休み、通知は音なし", color = Night, fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
             TextButton(onClick = { Silent.disable() }) { Text("解除") }
         }

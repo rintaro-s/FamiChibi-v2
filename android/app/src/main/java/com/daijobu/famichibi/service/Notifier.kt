@@ -38,7 +38,8 @@ class Notifier(private val ctx: Context) {
 
     /** Status notification with one-tap silent toggles. */
     fun updateService(silent: Boolean) {
-        val text = if (silent) "🌙 サイレント中（${com.daijobu.famichibi.data.Silent.label()}）" else "ちびっこが見守っています"
+        val mode = if (com.daijobu.famichibi.Graph.prefs.settings.value.silentShowChibi) "音だけオフ" else "ちびっこもお休み"
+        val text = if (silent) "🌙 サイレント中・$mode（${com.daijobu.famichibi.data.Silent.label()}）" else "ちびっこが見守っています"
         val b = NotificationCompat.Builder(ctx, CH_SERVICE)
             .setSmallIcon(R.drawable.ic_chibi).setContentTitle("FamiChibi").setContentText(text)
             .setOngoing(true).setContentIntent(openIntent(null)).setPriority(NotificationCompat.PRIORITY_MIN)

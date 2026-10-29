@@ -83,7 +83,7 @@ class Agent:
         # always go through the deterministic rules -> the same input gives the same, explainable
         # action. The LLM only handles what the rules cannot classify (free conversation etc.).
         async with MCPSession(mcp_cfg) as mcp:
-            llm_ok = settings.get("llm_enabled", True) and await self.llm_available(settings)
+            llm_ok = settings.get("llm_enabled", False) and await self.llm_available(settings)
             answer = await self.rule_run(run, fam, mcp, defer_to_llm=llm_ok)
             if answer is None:
                 try:
@@ -248,8 +248,8 @@ class Agent:
             if r:
                 return r
         elif re.search(r"(電気|照明|ライト|エアコン|カーテン|鍵)", n):
-            run.reasons.append("IoT連携がこの家族サーバーでOFFになっています")
-            return "おうちの家電操作はOFFになってるよ。家族サーバー設定の「IoT連携」をONにしてね！"
+            run.reasons.append("家電操作（拡張機能）がこの家族でOFFになっています")
+            return "家電の操作は拡張機能だよ。使うときは「家族」タブ →「拡張機能」で「家電操作」をONにしてね！"
 
         # --- schedule availability ------------------------------------------------------
         if re.search(r"予定|空いて|あいて|ひま|暇|都合", n):
@@ -330,9 +330,13 @@ class Agent:
 
         # --- capabilities / chit-chat ----------------------------------------------------------
         if re.search(r"(何ができる|なにができる|使い方|ヘルプ|help)", n):
-            return ("できること：\n・「電気消して」→ おうちの家電を操作\n・「8月15日みんな空いてる？」→ 予定確認（鍵付きの人には聞きに行く）\n"
-                    "・「パパに何時に帰るか聞いて」→ 代わりに質問\n・「明日7時にゴミ出しってリマインドして」→ メモ通知\n"
-                    "・「前にWi-Fiのパスワードなんて言ってた？」→ 過去のチャット検索\n・「まとめて」→ 見逃した連絡の整理")
+            # the AI is the family's helper: connecting people comes first, appliances are an optional extension
+            lines = ["・「パパに何時に帰るか聞いて」→ 代わりに本人に聞きに行く", "・「8月15日みんな空いてる？」→ 予定確認（鍵付きの人には聞きに行く）",
+                     "・「まとめて」→ 見逃した連絡の整理", "・「明日7時にゴミ出しってリマインドして」→ メモ通知",
+                     "・「前にWi-Fiのパスワードなんて言ってた？」→ 過去のチャット検索"]
+            if fam["iot_enabled"]:
+                lines.append("・「電気消して」→ おうちの家電を操作（拡張機能）")
+            return "できること：\n" + "\n".join(lines)
         if defer_to_llm:
             return None  # free conversation: let the LLM answer
         if re.search(r"(ありがと|サンキュ|助かった)", n):

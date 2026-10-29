@@ -271,40 +271,64 @@ private fun AiSection(ref: FamRef, isOwner: Boolean, patch: (JsonObject) -> Unit
     var model by remember(fam.settings) { mutableStateOf(fam.settings.str("model").orEmpty()) }
     var mcp by remember(fam.settings) { mutableStateOf(fam.settings["mcp_servers"]?.toString() ?: "[]") }
     var showAvatar by remember { mutableStateOf(false) }
-    SectionCard("🤖 AIちびっこ・IoT") {
-        status?.let { st ->
-            val llm = st.bool("llm") == true
-            Surface(color = if (llm) AiSoft else MaterialTheme.colorScheme.surfaceVariant, shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(10.dp)) {
-                    Text(if (llm) "判断エンジン: LLM（${st.str("model")}）" else "判断エンジン: ルールエンジン（LLM未接続でも動作）", fontWeight = FontWeight.Bold)
-                    val tools = (st["mcp_tools"] as? JsonArray)?.map { it.jsonObject.str("server") + "." + it.jsonObject.str("name") } ?: emptyList()
-                    Text("MCPツール: " + tools.joinToString(", ").ifBlank { "なし" }, style = MaterialTheme.typography.labelSmall)
-                }
-            }
-        }
+    val llmOn = fam.settings.bool("llm_enabled") == true
+
+    // The AI chibi is the family's helper: it connects people (watching over, asking for you, digests,
+    // reminders). It is not the product's centre — that is the family and their chibis.
+    SectionCard("🤖 ちびAI（家族のお手伝い係）") {
+        Text("毎朝の見守りのあいさつ、本人に代わりに聞く、見逃した連絡のまとめ、リマインド。家族と家族の間をつなぐ係です。",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (!isOwner) { Text("設定の変更はオーナーのみできます", style = MaterialTheme.typography.labelSmall); return@SectionCard }
-        Row(verticalAlignment = Alignment.CenterVertically) { Text("AIちびっこ", Modifier.weight(1f)); Switch(fam.ai_enabled, { patch(buildJsonObject { put("ai_enabled", it) }) }) }
-        Row(verticalAlignment = Alignment.CenterVertically) { Text("IoT連携（家電操作）", Modifier.weight(1f)); Switch(fam.iot_enabled, { patch(buildJsonObject { put("iot_enabled", it) }) }) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("LLMを使う（オフならルールのみ）", Modifier.weight(1f))
-            Switch(fam.settings.bool("llm_enabled") != false, { v -> patch(buildJsonObject { put("settings", buildJsonObject { put("llm_enabled", v) }) }) })
-        }
-        OutlinedTextField(aiName, { aiName = it.take(10) }, label = { Text("AIちびっこの名前") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(url, { url = it }, label = { Text("Ollama URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(model, { model = it }, label = { Text("モデル（例: qwen3.5:9b）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(mcp, { mcp = it }, label = { Text("MCPサーバー（JSON）") }, modifier = Modifier.fillMaxWidth(), minLines = 3,
-            supportingText = { Text("例: [{\"name\":\"ha\",\"type\":\"http\",\"url\":\"http://homeassistant.local:8086/mcp\"}]") })
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalButton(onClick = {
-                val servers = runCatching { JsonCfg.parseToJsonElement(mcp) }.getOrNull()
-                patch(buildJsonObject {
-                    put("ai_name", aiName)
-                    put("settings", buildJsonObject { put("ollama_url", url); put("model", model); servers?.let { put("mcp_servers", it) } })
-                })
-            }) { Text("保存") }
+        Row(verticalAlignment = Alignment.CenterVertically) { Text("ちびAIをつかう", Modifier.weight(1f)); Switch(fam.ai_enabled, { patch(buildJsonObject { put("ai_enabled", it) }) }) }
+        if (fam.ai_enabled) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(aiName, { aiName = it.take(10) }, label = { Text("名前") }, singleLine = true, modifier = Modifier.weight(1f))
+                FilledTonalButton(onClick = { patch(buildJsonObject { put("ai_name", aiName) }) }) { Text("保存") }
+            }
             OutlinedButton(onClick = { showAvatar = !showAvatar }) { Text("見た目を変える") }
+            if (showAvatar) AvatarPicker(s.api, fam.ai_avatar, "#5ec8ff", onSelect = { patch(buildJsonObject { put("ai_avatar", it.id) }) }, previewHeight = 220)
         }
-        if (showAvatar) AvatarPicker(s.api, fam.ai_avatar, "#5ec8ff", onSelect = { patch(buildJsonObject { put("ai_avatar", it.id) }) }, previewHeight = 220)
+    }
+
+    // Optional extensions: off for a new family, for households that want them.
+    SectionCard("🧩 拡張機能（オプション）") {
+        Text("FamiChibiの中心は「家族とちびっこ」。ここから先は、必要な家庭だけがONにする追加機能です。",
+            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (!isOwner) { Text("設定の変更はオーナーのみできます", style = MaterialTheme.typography.labelSmall); return@SectionCard }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("💡 家電操作")
+                Text("「おうち」タブが増え、ちびAIに「電気消して」と頼めます（Home Assistant などに MCP で接続）", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(fam.iot_enabled, { patch(buildJsonObject { put("iot_enabled", it) }) })
+        }
+        if (fam.iot_enabled) {
+            OutlinedTextField(mcp, { mcp = it }, label = { Text("つなぐ先（MCPサーバー・JSON）") }, modifier = Modifier.fillMaxWidth(), minLines = 2,
+                supportingText = { Text("初期値は試せる「仮想の家」。例: [{\"name\":\"ha\",\"type\":\"http\",\"url\":\"http://homeassistant.local:8086/mcp\"}]") })
+        }
+        HorizontalDivider()
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("💬 ちびAIと雑談（LLM）")
+                Text("決まった言い方以外の自由な会話にも答えます。家のPCなどで動く Ollama が必要です", style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Switch(llmOn, { v -> patch(buildJsonObject { put("settings", buildJsonObject { put("llm_enabled", v) }) }) })
+        }
+        if (llmOn) {
+            status?.let { st ->
+                val ok = st.bool("llm") == true
+                Text(if (ok) "✅ つながっています（${st.str("model")}）" else "⚠️ まだつながっていません。URLとモデルを確認してください（つながるまでは決まった言い方だけに答えます）",
+                    style = MaterialTheme.typography.labelSmall, color = if (ok) MaterialTheme.colorScheme.primary else Urgent)
+            }
+            OutlinedTextField(url, { url = it }, label = { Text("Ollama URL") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(model, { model = it }, label = { Text("モデル（例: qwen3.5:9b）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        }
+        if (fam.iot_enabled || llmOn) FilledTonalButton(onClick = {
+            val servers = runCatching { JsonCfg.parseToJsonElement(mcp) }.getOrNull()
+            patch(buildJsonObject { put("settings", buildJsonObject { put("ollama_url", url); put("model", model); servers?.let { put("mcp_servers", it) } }) })
+        }) { Text("拡張機能の設定を保存") }
     }
 }
 

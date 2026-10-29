@@ -127,6 +127,18 @@ fun LivingRoom(ref: FamRef, modifier: Modifier = Modifier, onReply: (ChibiCue, S
             }
         }
     }
+    // LINE / SMS messages brought by a member's chibi (on-device only) also show here while the app is open.
+    // Never read aloud: they are someone else's chat, and the user may be anywhere.
+    LaunchedEffect(fam.id, state.web) {
+        val web = state.web ?: return@LaunchedEffect
+        com.daijobu.famichibi.external.ExternalChats.incoming.collect { inc ->
+            val cue = inc.cue
+            if (cue.familyId != fam.id) return@collect
+            val id = if (cue.from == null || cue.from == "ai") "ai_${fam.id}" else cue.from
+            cues[id] = cue
+            web.deliver(id, cue.text, cue.emotion, cue.motion, cue.fx, cue.urgent, cue.replies, cue.reasons)
+        }
+    }
     // Live family events -> chibis
     LaunchedEffect(ref.session, fam.id, state.web) {
         val web = state.web ?: return@LaunchedEffect
