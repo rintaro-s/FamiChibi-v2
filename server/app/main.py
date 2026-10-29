@@ -381,10 +381,20 @@ class DeviceIn(BaseModel):
 # ---------------------------------------------------------------------------------------------
 # info / users
 # ---------------------------------------------------------------------------------------------
+def demo_room() -> dict | None:
+    """The room visitors are dropped into (set with kv `demo_invite` = a reusable invite token); None when unset or the invite went away."""
+    tok = db.kv_get("demo_invite")
+    inv = db.one("SELECT * FROM invites WHERE token=?", (tok,)) if tok else None
+    if invite_problem(inv) or inv["preset_name"] or inv["preset_nickname"]:
+        return None
+    fam = db.family(inv["family_id"])
+    return {"name": fam["name"], "emoji": fam["emoji"], "invite": tok}
+
+
 @app.get("/api/info")
 def info(request: Request):
     port = MAIN_LOOP.get("port", 8000)
-    return {"app": "famichibi", "name": db.kv_get("host_name", socket.gethostname()), "version": VERSION,
+    return {"app": "famichibi", "demo_room": demo_room(), "name": db.kv_get("host_name", socket.gethostname()), "version": VERSION,
             "url": public_base(request), "lan_urls": [f"http://{ip}:{port}" for ip in lan_ips()],
             "public_urls": [u.strip() for u in os.environ.get("FAMICHIBI_PUBLIC_URLS", "").split(",") if u.strip()], "families": db.one("SELECT COUNT(*) AS n FROM families")["n"], "time": time.time()}
 
@@ -534,6 +544,12 @@ def create_family(body: FamilyIn, user: dict = Depends(current_user)):
 async def join_family(fam: dict, user: dict, nickname: str = "") -> None:
     if db.member(fam["id"], user["id"]):
         return
+    taken = {m["avatar"] for m in db.members(fam["id"])} | {fam["ai_avatar"]}
+    if user["avatar"] in taken and user["avatar"].startswith("builtin_"):  # every chibi in a family should look different
+        free = unused_avatar(fam["id"])
+        if free:
+            db.update("users", {"id": user["id"]}, {"avatar": free})
+            user["avatar"] = free
     db.insert("members", {"family_id": fam["id"], "user_id": user["id"], "role": "member", "nickname": nickname, "joined_at": now()})
     await svc.broadcast_family(fam["id"], {"type": "family", "family": svc.family_out(fam)})
     await svc.ai_say(fam["id"], f"{nickname or user['name']}が家族サーバーに参加したよ！よろしくね👋", emotion="excited", motion="bothWave",
@@ -688,6 +704,29 @@ def revoke_invite(fid: str, tok: str, user: dict = Depends(current_user)):
     return {"ok": True}
 
 
+@app.post("/api/families/{fid}/demo-room")
+def set_demo_room(fid: str, user: dict = Depends(current_user)):
+    """Make this family the demo room: the app's connect screen then offers visitors a one-tap "join", which uses a reusable invite."""
+    require_owner(fid, user)
+    cur = db.kv_get("demo_invite")
+    inv = db.one("SELECT * FROM invites WHERE token=? AND family_id=?", (cur, fid)) if cur else None
+    if invite_problem(inv) or inv["expires_at"] or inv["preset_name"] or inv["preset_nickname"]:
+        tok = secrets.token_urlsafe(10)
+        db.insert("invites", {"token": tok, "family_id": fid, "preset_name": "", "preset_nickname": "", "preset_avatar": "",
+                              "created_by": user["id"], "created_at": now(), "expires_at": None})
+        db.kv_set("demo_invite", tok)
+    return {"demo_room": demo_room()}
+
+
+@app.delete("/api/families/{fid}/demo-room")
+def clear_demo_room(fid: str, user: dict = Depends(current_user)):
+    require_owner(fid, user)
+    tok = db.kv_get("demo_invite")
+    if tok and db.one("SELECT 1 AS x FROM invites WHERE token=? AND family_id=?", (tok, fid)):
+        db.exec("DELETE FROM kv WHERE k='demo_invite'")
+    return {"demo_room": demo_room()}
+
+
 @app.get("/api/invites/{tok}")
 def invite_info(tok: str):
     inv = load_invite(tok)
@@ -702,7 +741,7 @@ async def claim_invite(tok: str, body: ClaimIn, authorization: str = Header(defa
     inv = load_invite(tok)
     user = db.user_by_token(authorization[7:]) if authorization.lower().startswith("bearer ") else None
     if not user:
-        user = create_user(body.name or inv["preset_name"] or "家族", inv["preset_avatar"] or unused_avatar(inv["family_id"]))
+        user = create_user(body.name or inv["preset_name"] or f"ゲスト{len(db.members(inv['family_id'])) + 1}", inv["preset_avatar"] or unused_avatar(inv["family_id"]))
     fam = db.family(inv["family_id"])
     await join_family(fam, user, inv["preset_nickname"])
     upd = {"uses": inv["uses"] + 1}
@@ -1399,7 +1438,7 @@ def join_page(tok: str, request: Request):
 </div>
 <script>
 const a = document.getElementById('app');
-if (/Android/i.test(navigator.userAgent) && !/; wv\)/.test(navigator.userAgent)) a.href = a.dataset.intent;
+if (/Android/i.test(navigator.userAgent) && !/; wv\\)/.test(navigator.userAgent)) a.href = a.dataset.intent;
 a.addEventListener('click', () => setTimeout(() => {{ if (!document.hidden) document.getElementById('noapp').hidden = false; }}, 1800));
 if (location.search.includes('noapp')) document.getElementById('noapp').hidden = false;
 </script>'''

@@ -90,19 +90,27 @@ fun LivingRoom(ref: FamRef, modifier: Modifier = Modifier, onReply: (ChibiCue, S
     val memberKey = fam.members.joinToString { it.user_id + it.avatar } + fam.ai_avatar + fam.ai_enabled
     LaunchedEffect(state.web, memberKey) {
         val web = state.web ?: return@LaunchedEffect
-        if (web.castKey == memberKey) return@LaunchedEffect // cached stage: everyone is already there
-        val actors = fam.members.mapNotNull { ChibiService.actorFor(fam.id, it.user_id) } +
-            listOfNotNull(if (fam.ai_enabled) ChibiService.actorFor(fam.id, "ai") else null)
-        web.room(actors.size)
-        // members who left the family (or changed id) disappear from a cached stage too
-        web.js("(()=>{const keep=${org.json.JSONArray(actors.map { it.id })};for(const id of Chibi.ids()) if(!keep.includes(id)) Chibi.remove(id);})()")
-        // presence first, so members who are out never appear in the room
-        applyPresence(web, Graph.famRef(fam.id)?.family ?: fam, animate = false)
-        coroutineScope {
-            actors.map { a -> async { a to a.avatarUrl?.let { Graph.avatars.ensure(it) } } }.awaitAll()
-        }.forEach { (a, local) -> if (local != null) web.add(a.id, local, a.name, a.color, a.ai) }
-        web.arrangeRow(actors.map { it.id })
-        web.castKey = memberKey
+        val expected = fam.members.size + if (fam.ai_enabled) 1 else 0
+        // Retry while the cast is incomplete (an avatar download failed, the family was not fully loaded yet): a half-built
+        // room must not be remembered as "done", or its chibis would stay missing until the app is restarted.
+        for (attempt in 0..5) {
+            val actors = fam.members.mapNotNull { ChibiService.actorFor(fam.id, it.user_id) } +
+                listOfNotNull(if (fam.ai_enabled) ChibiService.actorFor(fam.id, "ai") else null)
+            if (web.castKey == memberKey && web.holdsAll(actors.map { it.id }) && actors.size == expected) return@LaunchedEffect // cached stage: everyone is already there
+            web.room(actors.size)
+            // members who left the family (or changed id) disappear from a cached stage too
+            web.js("(()=>{const keep=${org.json.JSONArray(actors.map { it.id })};for(const id of Chibi.ids()) if(!keep.includes(id)) Chibi.remove(id);})()")
+            // presence first, so members who are out never appear in the room
+            applyPresence(web, Graph.famRef(fam.id)?.family ?: fam, animate = false)
+            var complete = actors.size == expected
+            coroutineScope {
+                actors.map { a -> async { a to a.avatarUrl?.let { Graph.avatars.ensure(it) } } }.awaitAll()
+            }.forEach { (a, local) -> if (local != null) web.add(a.id, local, a.name, a.color, a.ai) else complete = false }
+            web.arrangeRow(actors.map { it.id })
+            if (complete) { web.castKey = memberKey; return@LaunchedEffect }
+            web.castKey = null
+            kotlinx.coroutines.delay(2000L * (attempt + 1))
+        }
     }
     // Presence changes (asleep, moving, ...) and the real living-room light (IoT) are reflected in the room.
     val presenceKey = fam.members.joinToString { it.user_id + it.presence.state + it.presence.at_home + it.presence.label }

@@ -45,6 +45,9 @@ class ChibiWeb(context: Context, private val query: String = "") : WebView(conte
     private val loaded = HashSet<String>()
     private val sources = HashMap<String, String>() // id -> avatar url last requested
 
+    /** True when every one of [ids] has been added to this stage (used to tell a really complete cached cast from a half-built one). */
+    fun holdsAll(ids: Collection<String>) = sources.keys.containsAll(ids)
+
     private val loader = WebViewAssetLoader.Builder()
         .setDomain(DOMAIN)
         .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(context))

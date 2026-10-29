@@ -58,7 +58,8 @@ fun AvatarPicker(api: Api, selected: String, color: String, onSelect: (Avatar) -
     LaunchedEffect(api.base) {
         runCatching { avatars = api.decode(api.get("/api/avatars")["avatars"]) }
             .onFailure { toast(ctx, errText(it)) }
-        if (selected.isBlank()) avatars.firstOrNull()?.let(onSelect)
+        // アリシアはAIちびっこ専用の見た目。何も選ばないままで進む人がAIと同じ姿にならないよう、それ以外を初期選択にする
+        if (selected.isBlank()) (avatars.firstOrNull { it.id != "builtin_AliciaSolid" } ?: avatars.firstOrNull())?.let(onSelect)
     }
     LaunchedEffect(stage.web, selected, avatars) {
         val web = stage.web ?: return@LaunchedEffect

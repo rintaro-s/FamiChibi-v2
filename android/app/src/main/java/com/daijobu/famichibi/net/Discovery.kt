@@ -2,6 +2,7 @@ package com.daijobu.famichibi.net
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import java.net.DatagramPacket
 import java.net.DatagramSocket
@@ -50,6 +51,8 @@ object Discovery {
 
     suspend fun probe(url: String): HostInfo? = runCatching {
         val r = Api(url).get("/api/info")
-        HostInfo(app = r.str("app").orEmpty(), name = r.str("name").orEmpty(), version = r.str("version").orEmpty(), url = Api.normalizeBase(url))
+        val demo = r["demo_room"] as? JsonObject
+        HostInfo(app = r.str("app").orEmpty(), name = r.str("name").orEmpty(), version = r.str("version").orEmpty(), url = Api.normalizeBase(url),
+            demoInvite = demo?.str("invite").orEmpty(), demoName = demo?.str("name").orEmpty())
     }.getOrNull()?.takeIf { it.app == "famichibi" }
 }

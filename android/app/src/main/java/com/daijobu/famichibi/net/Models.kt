@@ -230,4 +230,7 @@ data class Avatar(
 )
 
 @Serializable
-data class HostInfo(val app: String = "", val name: String = "", val version: String = "", val url: String = "")
+data class HostInfo(
+    val app: String = "", val name: String = "", val version: String = "", val url: String = "",
+    val demoInvite: String = "", val demoName: String = "",   // 見に来た人をすぐ入れるデモルーム（サーバーが案内したときだけ）
+)

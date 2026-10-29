@@ -141,3 +141,30 @@ def test_idempotent_retries_and_client_logs():
         # crash logs from the app
         assert c.post("/api/client-logs", json={"text": "java.lang.IllegalArgumentException: Key was already used", "kind": "crash"},
                       headers=auth(a["token"])).json()["ok"]
+
+
+def test_demo_room_visitors():
+    with TestClient(app) as c:
+        owner = c.post("/api/register", json={"name": "主催", "avatar": "builtin_AvatarSample_C"}).json()
+        guest = c.post("/api/register", json={"name": "来場者", "avatar": "builtin_AvatarSample_C"}).json()
+        fam = c.post("/api/families", json={"name": "デモルーム"}, headers=auth(owner["token"])).json()["family"]
+        assert c.get("/api/info").json()["demo_room"] is None
+        # only the owner can designate the room; doing it twice keeps the same reusable invite
+        assert c.post(f"/api/families/{fam['id']}/demo-room", headers=auth(guest["token"])).status_code == 403
+        room = c.post(f"/api/families/{fam['id']}/demo-room", headers=auth(owner["token"])).json()["demo_room"]
+        assert c.post(f"/api/families/{fam['id']}/demo-room", headers=auth(owner["token"])).json()["demo_room"]["invite"] == room["invite"]
+        assert c.get("/api/info").json()["demo_room"]["name"] == "デモルーム"
+        # any number of visitors can claim it, each gets their own account and a look nobody else in the room has
+        looks = set()
+        for i in range(3):
+            r = c.post(f"/api/invites/{room['invite']}/claim", json={}).json()
+            assert r["user"]["name"].startswith("ゲスト") and r["family"]["id"] == fam["id"]
+            me = c.get("/api/me", headers=auth(r["token"])).json()
+            looks.add(me["avatar"] if "avatar" in me else r["user"]["avatar"])
+        assert len(looks) == 3
+        # an existing account (same look as the owner) is moved to a free one when it joins by code
+        j = c.post("/api/families/join", json={"code": fam["code"]}, headers=auth(guest["token"])).json()["family"]
+        avs = [m["avatar"] for m in j["members"]] + [j["ai_avatar"]]
+        assert len(set(avs)) == len(avs)
+        c.delete(f"/api/families/{fam['id']}/demo-room", headers=auth(owner["token"]))
+        assert c.get("/api/info").json()["demo_room"] is None

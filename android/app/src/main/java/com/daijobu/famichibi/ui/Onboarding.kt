@@ -83,8 +83,10 @@ fun Onboarding(join: JoinRequest?, startAt: Int = 0, onDone: (String?) -> Unit) 
     val scope = rememberCoroutineScope()
 
     // One-tap join from an NFC card / invite link: no typing at all (for grandparents).
-    LaunchedEffect(join) {
-        val j = join ?: return@LaunchedEffect
+    var pending by remember { mutableStateOf(join) }
+    LaunchedEffect(join) { if (join != null) pending = join }
+    LaunchedEffect(pending) {
+        val j = pending ?: return@LaunchedEffect
         if (j.invite != null) {
             runCatching {
                 val api = Api(j.host)
@@ -109,7 +111,7 @@ fun Onboarding(join: JoinRequest?, startAt: Int = 0, onDone: (String?) -> Unit) 
         AnimatedContent(targetState = step, label = "step") { s ->
             when (s) {
                 0 -> Welcome { step = 1 }
-                1 -> ConnectHost { h -> host = h; step = 2 }
+                1 -> ConnectHost(onHost = { h -> host = h; step = 2 }, onDemo = { h -> pending = JoinRequest(h.url, invite = h.demoInvite) })
                 2 -> Profile(host!!) { step = 3 }
                 3 -> FamilySetup(join) { fid -> familyId = fid; step = 4 }
                 else -> if (startAt > 0) LaunchedEffect(Unit) { onDone(familyId) } else Permissions { onDone(familyId) }
@@ -135,7 +137,7 @@ private fun Welcome(next: () -> Unit) {
 }
 
 @Composable
-private fun ConnectHost(onHost: (HostInfo) -> Unit) {
+private fun ConnectHost(onHost: (HostInfo) -> Unit, onDemo: (HostInfo) -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var found by remember { mutableStateOf<List<HostInfo>>(emptyList()) }
@@ -158,6 +160,11 @@ private fun ConnectHost(onHost: (HostInfo) -> Unit) {
         SectionCard(if (defaults.isEmpty()) "同じWi-Fiで見つかったサーバー" else "見つかったサーバー（デバッグ既定ホスト含む）") {
             if (scanning) RowCenter { CircularProgressIndicator(Modifier.size(20.dp)); Text("さがしています…") }
             else if (found.isEmpty()) Text("見つかりませんでした", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            found.filter { it.demoInvite.isNotEmpty() }.take(1).forEach { h ->
+                Button(onClick = { onDemo(h) }, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                    Text("🎬 デモルーム「${h.demoName}」にすぐ参加", style = MaterialTheme.typography.titleMedium)
+                }
+            }
             found.forEach { h ->
                 Surface(shape = RoundedCornerShape(14.dp), color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth().clickable { onHost(h) }) {
